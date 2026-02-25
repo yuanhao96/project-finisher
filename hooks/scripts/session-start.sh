@@ -7,8 +7,9 @@ if [[ ! -f "$PROGRESS_FILE" ]]; then
   exit 0
 fi
 
-# Extract current milestone and phase
-CURRENT_MILESTONE=$(grep -A1 "## Current Milestone" "$PROGRESS_FILE" | tail -1 | sed 's/^### //')
+# Extract current milestone (skip blank lines after header)
+CURRENT_MILESTONE=$(grep -A5 "## Current Milestone" "$PROGRESS_FILE" | grep "^### " | head -1 | sed 's/^### //' | sed 's/^Milestone: //')
+# Extract current phase
 CURRENT_PHASE=$(grep "^\- \*\*Phase\*\*:" "$PROGRESS_FILE" | head -1 | sed 's/.*: //')
 
 if [[ -n "$CURRENT_MILESTONE" && -n "$CURRENT_PHASE" ]]; then
