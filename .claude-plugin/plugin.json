@@ -11,6 +11,5 @@
     "autonomous-agent",
     "iterative-development",
     "workflow-automation"
-  ],
-  "hooks": "./hooks/hooks.json"
+  ]
 }
