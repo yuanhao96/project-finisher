@@ -54,8 +54,13 @@ Each milestone progresses through four phases in order. After the Review phase c
    - Stop when a round produces **no new significant risks or questions** — the approach has converged.
    - Typical milestone: 2-3 rounds. Complex or risky milestone: 3-5 rounds. Simple milestone: 2 rounds minimum.
 
-3. After convergence:
-   - Re-scope the milestone if brainstorming reveals it is too large, too small, or misdirected. Update `progress.md` if the milestone definition changes.
+3. After convergence, **update the current milestone and roadmap**:
+   - **Re-scope current milestone** if brainstorming reveals it is too large, too small, or misdirected. Update the milestone definition and acceptance criteria in `progress.md`.
+   - **Revise the roadmap** if brainstorming revealed any of the following:
+     - A prerequisite milestone is needed that wasn't previously identified → add it to Upcoming Milestones and re-prioritize.
+     - The current milestone should be split into multiple smaller milestones → replace it with the first piece and queue the rest.
+     - Upcoming milestones need reordering due to newly discovered dependencies → update priorities and dependency chains.
+     - An upcoming milestone is no longer needed or has been absorbed by this one → remove or merge it.
    - Record **all** key decisions, resolved concerns, and remaining risks in `current_context.md` under "Key Decisions". Include which round produced each decision.
    - Note any unresolved risks that the Plan and Execute phases should watch for.
 4. Advance to Phase 2 (Plan).
