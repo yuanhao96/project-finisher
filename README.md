@@ -5,7 +5,13 @@ A Claude Code plugin that autonomously drives software projects from a high-leve
 ## Installation
 
 ```bash
-claude plugin install project-finisher
+# 1. Register the marketplace
+claude plugin marketplace add https://github.com/yuanhao96/project-finisher.git
+
+# 2. Install the plugin
+claude plugin install project-finisher@project-finisher
+
+# 3. Restart Claude Code to activate
 ```
 
 ## Usage
