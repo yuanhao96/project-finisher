@@ -1,0 +1,39 @@
+{
+  "name": "project-finisher",
+  "owner": {
+    "name": "Yuanhao Huang",
+    "email": "noreply@example.com"
+  },
+  "metadata": {
+    "description": "Autonomous iterative project completion agent — drives projects from goal to done through brainstorm/plan/execute/review cycles with cross-session memory",
+    "version": "0.1.0",
+    "created": "2026-02-25",
+    "updated": "2026-02-25"
+  },
+  "plugins": [
+    {
+      "name": "project-finisher",
+      "description": "Autonomous iterative project completion agent with brainstorm/plan/execute/review workflow and markdown-based memory",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/orchestrate/SKILL.md",
+        "./skills/memory/SKILL.md"
+      ]
+    }
+  ],
+  "activation": {
+    "keywords": [
+      "finish project",
+      "complete project",
+      "project finisher",
+      "autonomous completion",
+      "milestone workflow"
+    ],
+    "patterns": [
+      "(?i)(finish|complete|continue)\\s+(this\\s+)?project",
+      "(?i)/finish",
+      "(?i)/status"
+    ]
+  }
+}
