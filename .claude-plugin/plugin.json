@@ -1,0 +1,16 @@
+{
+  "name": "project-finisher",
+  "version": "0.1.0",
+  "description": "Autonomous iterative project completion agent — drives projects from goal to done through brainstorm/plan/execute/review cycles with cross-session memory",
+  "author": {
+    "name": "Yuanhao Huang"
+  },
+  "license": "MIT",
+  "keywords": [
+    "project-completion",
+    "autonomous-agent",
+    "iterative-development",
+    "workflow-automation"
+  ],
+  "hooks": "./hooks/hooks.json"
+}
