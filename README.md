@@ -4,69 +4,50 @@ Ever wish you could hand Claude Code a goal file and walk away while it figures 
 
 ## Workflow Overview
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    STARTUP                           │
-│  Read goal file → Check for project_memory/         │
-│  Resume existing session OR initialize new one      │
-│  Propose initial milestones (1-3)                   │
-└──────────────────────┬──────────────────────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  PHASE 1: BRAINSTORM    │ ◄── Multi-round /scientific-brainstorming
-          │                         │
-          │  Round 1: Feasibility   │
-          │     ↓ pushback          │
-          │  Round 2: Address R1    │
-          │     ↓ pushback          │
-          │  Round 3+: Until        │
-          │     convergence         │
-          │                         │
-          │  Then:                  │
-          │  • Re-scope milestone   │
-          │  • Revise roadmap       │ ◄── Can add/split/reorder/remove milestones
-          │  • Record decisions     │
-          └────────────┬────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  PHASE 2: PLAN          │
-          │                         │
-          │  Create step-by-step    │
-          │  implementation plan    │
-          │  with files, tasks,     │
-          │  tests, dependencies    │
-          │                         │
-          │  Save to docs/plans/    │
-          └────────────┬────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  PHASE 3: EXECUTE       │
-          │                         │
-          │  Implement plan steps   │
-          │  Write code + tests     │
-          │  Commit after each unit │
-          │  Handle blockers        │
-          └────────────┬────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  PHASE 4: REVIEW        │
-          │                         │
-          │  Run test suite         │
-          │  Check acceptance       │
-          │  criteria               │
-          │  Check regressions      │
-          │  Update lessons.md      │
-          │  Propose new milestones │
-          │  Re-prioritize queue    │
-          └────────────┬────────────┘
-                       │
-              ┌────────▼────────┐
-              │  Goal reached?  │
-              │                 │
-              │  YES → Stop     │
-              │  NO  → Next     │──── back to Phase 1
-              │  milestone      │
-              └─────────────────┘
+```mermaid
+flowchart TD
+    START(["/finish --goal goal.md"]) --> CHECK{project_memory/ exists?}
+    CHECK -- No --> INIT["Initialize memory\nPropose 1-3 milestones"]
+    CHECK -- Yes --> RESUME["Resume from\ncurrent phase"]
+    INIT --> BRAINSTORM
+    RESUME --> BRAINSTORM
+
+    subgraph BRAINSTORM ["Phase 1: Brainstorm"]
+        direction TB
+        B1["Round 1: Feasibility & approach\n/scientific-brainstorming"]
+        B1 -- "pushback" --> B2["Round 2: Address concerns\n/scientific-brainstorming"]
+        B2 -- "new concerns?" --> B3["Round 3+: Until convergence\n/scientific-brainstorming"]
+        B3 --> BOUT["Re-scope milestone\nRevise roadmap\nRecord decisions"]
+    end
+
+    BRAINSTORM --> PLAN
+
+    subgraph PLAN ["Phase 2: Plan"]
+        P1["Create step-by-step plan\nFiles, tasks, tests, dependencies\nSave to docs/plans/"]
+    end
+
+    PLAN --> EXECUTE
+
+    subgraph EXECUTE ["Phase 3: Execute"]
+        E1["Implement plan steps\nWrite code + tests\nCommit after each unit\nHandle blockers"]
+    end
+
+    EXECUTE --> REVIEW
+
+    subgraph REVIEW ["Phase 4: Review"]
+        R1["Run test suite\nCheck acceptance criteria\nCheck regressions\nUpdate lessons.md\nPropose new milestones"]
+    end
+
+    REVIEW --> DONE{Goal reached?}
+    DONE -- "Yes" --> STOP(["Done!"])
+    DONE -- "No" --> NEXT["Next milestone"] --> BRAINSTORM
+
+    style BRAINSTORM fill:#e8f4fd,stroke:#4a90d9
+    style PLAN fill:#e8fde8,stroke:#4a9950
+    style EXECUTE fill:#fdf4e8,stroke:#d9904a
+    style REVIEW fill:#f4e8fd,stroke:#904ad9
+    style START fill:#333,color:#fff,stroke:#333
+    style STOP fill:#333,color:#fff,stroke:#333
 ```
 
 **Roadmap changes** happen at two points: Brainstorm (re-scope, add prerequisites, split, reorder) and Review (propose new milestones, re-prioritize).
