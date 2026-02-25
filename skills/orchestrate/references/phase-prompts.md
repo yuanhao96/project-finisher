@@ -81,7 +81,8 @@ Let's resolve these remaining issues and confirm the approach is solid.
 **Rules**:
 - Always run at least 2 rounds — never skip the pushback-resolution cycle.
 - Do NOT write code or create files.
-- If still ambiguous after 3+ rounds, STOP and ask the user.
+- If still ambiguous after 3+ rounds, STOP and ask the user (normal mode) or auto-decide (auto mode).
+- **Auto mode**: When brainstorming presents options or asks for a choice, auto-select the recommended option. If no recommendation, pick the simplest approach. Log all auto-decisions as `[AUTO]` in `current_context.md`.
 
 ---
 
@@ -137,7 +138,8 @@ OUTPUT:
 
 RULES:
 - The plan must be self-contained and executable without clarification.
-- If any step requires user input, STOP and ask before finalizing.
+- Normal mode: If any step requires user input, STOP and ask before finalizing.
+- Auto mode: If a step would normally require user input, make the most reasonable assumption, document it as [AUTO] in current_context.md, and proceed.
 ```
 
 ---
@@ -172,7 +174,8 @@ For each unchecked step in the plan:
 WHEN BLOCKED:
 - Record the blocker clearly: what failed, what was tried, what is needed.
 - Skip to the next step that does not depend on the blocker.
-- If all remaining steps depend on the blocker, STOP and ask the user.
+- Normal mode: If all remaining steps depend on the blocker, STOP and ask the user.
+- Auto mode: If all remaining steps depend on the blocker, attempt an alternative approach. If no alternative works, log the blocker as [AUTO-BLOCKED] in current_context.md and advance to Review with partial completion.
 
 RULES:
 - Follow the plan. Do not add unplanned work.
@@ -254,5 +257,6 @@ RULES:
 - Be honest about criteria. "Met" requires evidence, not assumption.
 - Do not skip regression checks.
 - Always write lessons, even if everything went smoothly.
-- If this milestone has failed review twice, STOP and ask the user.
+- Normal mode: If this milestone has failed review twice, STOP and ask the user.
+- Auto mode: If this milestone has failed review twice, re-scope it smaller. If it fails a third time, skip it and log the failure in lessons.md.
 ```

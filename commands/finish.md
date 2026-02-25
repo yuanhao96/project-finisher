@@ -1,7 +1,7 @@
 ---
 name: finish
 description: "Start or continue the project-finisher autonomous completion workflow"
-argument-hint: "--goal <path> [--project <path>]"
+argument-hint: "--goal <path> [--project <path>] [--auto]"
 ---
 
 # /finish Command
@@ -12,8 +12,28 @@ Extract the following from the user's command:
 
 - `--goal <path>`: Path to the goal file. **Required** on first run (when no `project_memory/` directory exists).
 - `--project <path>`: Path to the target project directory. Defaults to the current working directory if not provided.
+- `--auto`: Enable **auto mode**. When set, the workflow runs with minimal user interaction — all decision points that would normally stop and ask the user are resolved automatically by the orchestrator (see "Auto Mode" below).
 
 Resolve all paths to absolute paths before proceeding.
+
+---
+
+## Auto Mode
+
+When `--auto` is passed, the workflow operates with maximum autonomy:
+
+- **Milestone approval**: Initial milestones are accepted as-proposed without waiting for user confirmation.
+- **First-run confirmation**: The "Ready to begin?" prompt is skipped — work starts immediately.
+- **Brainstorming decisions**: When brainstorming surfaces equally viable approaches, the orchestrator picks the best option based on its own evaluation. If no option is clearly superior, it chooses the **recommended** one (the one `/scientific-brainstorming` endorses, or the simplest approach that satisfies acceptance criteria).
+- **All "stop and ask" points**: Instead of stopping, the orchestrator makes the decision autonomously, documents its reasoning in `current_context.md` under "Key Decisions", and continues. The only exception is **external resources needed** (API keys, credentials, hardware) — auto mode still stops for those since it cannot provision them.
+
+Auto mode is propagated to the orchestrate skill so it applies throughout all phases.
+
+**Decision logic for auto mode** (applied at every decision point):
+1. If one option is clearly better (lower risk, simpler, better aligned with the goal) → choose it.
+2. If the brainstorming output explicitly recommends an approach → follow the recommendation.
+3. If options are truly equivalent → choose the simplest one (fewest files, fewest dependencies, most conventional approach).
+4. Document the choice and reasoning in `current_context.md` so the user can review it later.
 
 ---
 
@@ -35,7 +55,8 @@ Execute these steps in order:
 2. **Confirm with the user** before making any changes:
    > I'll be working on **[project path]** toward the goal described in **[goal path]**. Ready to begin?
 
-   Wait for explicit user confirmation before continuing.
+   - **Normal mode**: Wait for explicit user confirmation before continuing.
+   - **Auto mode**: Log the message for the record but proceed immediately without waiting.
 
 3. **Create the `project_memory/` directory** at the project root with these initialized files:
    - `progress.md` — populated with the goal summary extracted from the goal file, an empty "Completed Milestones" section, and empty "Current Milestone" and "Upcoming Milestones" sections.
@@ -57,9 +78,10 @@ Execute these steps in order:
    - Acceptance criteria (2-5 items)
    - Priority and dependency information
 
-   Ask the user to approve, modify, or reorder the milestones.
+   - **Normal mode**: Ask the user to approve, modify, or reorder the milestones.
+   - **Auto mode**: Display the milestones for the record, then approve them automatically and proceed.
 
-7. **Once approved**, write the milestones to `progress.md` (first as current, rest as upcoming) and begin the orchestration loop by invoking the orchestrate skill.
+7. **Once approved**, write the milestones to `progress.md` (first as current, rest as upcoming) and begin the orchestration loop by invoking the orchestrate skill. Pass the `--auto` flag through to the orchestrate skill if auto mode is active.
 
 ---
 

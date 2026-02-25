@@ -52,7 +52,7 @@ flowchart TD
 
 **Roadmap changes** happen at two points: Brainstorm (re-scope, add prerequisites, split, reorder) and Review (propose new milestones, re-prioritize).
 
-**The plugin stops to ask you** when the goal is ambiguous, approaches are equally viable, external resources are needed, the project has diverged from the goal, or the same milestone has failed twice.
+**The plugin stops to ask you** when the goal is ambiguous, approaches are equally viable, external resources are needed, the project has diverged from the goal, or the same milestone has failed twice. In `--auto` mode, these are resolved autonomously (except external resources).
 
 ## Prerequisites
 
@@ -99,6 +99,22 @@ To target a specific project directory (defaults to the current working director
 ```
 
 The plugin will read your goal, assess the current state of the project, and begin iterating autonomously until the goal is satisfied.
+
+### Auto Mode
+
+Add `--auto` to run with minimal user interaction. The plugin will make decisions autonomously instead of stopping to ask:
+
+```bash
+/finish --goal path/to/goal.md --auto
+```
+
+In auto mode:
+- Initial milestones are approved automatically
+- Brainstorming choices (approach selection, trade-off decisions) are resolved using the recommended or simplest option
+- Blocked milestones are re-scoped or skipped after repeated failures
+- The only exception is **external resources** (API keys, credentials) — the plugin still stops for those
+
+All autonomous decisions are logged with an `[AUTO]` prefix in `project_memory/current_context.md` so you can review them after the session.
 
 ## Memory Files
 

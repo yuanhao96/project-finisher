@@ -72,6 +72,11 @@ Each milestone progresses through four phases in order. After the Review phase c
 - Always run at least 2 rounds — never skip the pushback-resolution cycle.
 - If a prior lesson directly applies, feed it into Round 1 explicitly so brainstorming can build on it.
 - If the milestone is ambiguous or blocked by unknowns after 3+ rounds, stop and ask the user (see "When to Stop and Ask the User").
+- **Auto mode**: When `/scientific-brainstorming` presents multiple candidate approaches or options to choose from, do NOT stop to ask the user. Instead, evaluate the options using this priority:
+  1. Pick the option that brainstorming explicitly recommends (look for words like "recommended", "preferred", "best option").
+  2. If no explicit recommendation, pick the option with the best trade-off profile (lowest risk, fewest dependencies, best alignment with goal).
+  3. If options are genuinely equivalent, pick the simplest one.
+  4. Log the decision as `[AUTO]` in `current_context.md` and continue to the next brainstorming round with the chosen approach.
 
 ---
 
@@ -201,7 +206,7 @@ As the project advances through milestones, the nature of the work changes. Use 
 
 ## When to Stop and Ask the User
 
-The orchestrator should operate autonomously, but must stop and ask the user in these situations:
+The orchestrator should operate autonomously, but must stop and ask the user in these situations — **unless auto mode is active** (see "Auto Mode Behavior" below):
 
 1. **Ambiguous goal**: The goal file is unclear about what "done" looks like, and multiple reasonable interpretations exist that would lead to fundamentally different work.
 2. **Equally viable approaches**: Brainstorming produces two or more approaches with similar trade-offs, and the choice significantly affects the project's direction (e.g., choosing between two frameworks, two database designs).
@@ -209,11 +214,26 @@ The orchestrator should operate autonomously, but must stop and ask the user in 
 4. **Significant divergence from goal**: During Review, it becomes clear that the completed work has drifted meaningfully from the original goal, and course correction requires user input.
 5. **Repeated failure**: The same milestone has failed review twice. Something fundamental may be wrong with the approach or the goal itself.
 
-When stopping, provide:
+When stopping (in normal mode), provide:
 - A clear summary of the situation.
 - The specific question or decision needed.
 - 2-3 options with trade-offs, if applicable.
 - A recommendation, if one option is clearly better.
+
+### Auto Mode Behavior
+
+When **auto mode** is active (passed from the `/finish --auto` command), the orchestrator resolves decision points autonomously instead of stopping:
+
+| Situation | Auto Mode Action |
+|-----------|-----------------|
+| **Ambiguous goal** | Choose the interpretation most consistent with the goal file's explicit requirements. Prefer the narrower scope. Document the interpretation in `current_context.md`. |
+| **Equally viable approaches** | Apply the decision logic: (1) pick the option with lower risk/complexity, (2) follow the `/scientific-brainstorming` recommendation if one exists, (3) if truly equal, pick the simplest/most conventional approach. Document the choice and reasoning. |
+| **External resources needed** | **Still stop and ask** — auto mode cannot provision credentials or external services. |
+| **Significant divergence** | Re-align toward the goal by choosing the correction that requires the least rework. Document what diverged and how it was corrected. |
+| **Repeated failure** | Re-scope the milestone to a smaller, more achievable version. Split off the harder parts as a separate future milestone. If the milestone has failed 3 times, skip it and move on, logging the failure in `lessons.md`. |
+
+**Logging requirement**: Every auto-decided choice must be logged in `current_context.md` under "Key Decisions" with the prefix `[AUTO]` so the user can review all autonomous decisions after the session. Example:
+> `[AUTO] Chose approach A (file-based caching) over approach B (Redis) — simpler, no external dependency, sufficient for the current scale. Brainstorming Round 1 recommended this approach.`
 
 ---
 
