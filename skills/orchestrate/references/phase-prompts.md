@@ -11,42 +11,77 @@ These are the internal prompt templates the orchestrator uses when entering each
 - `project_memory/progress.md` (completed milestones, current milestone, upcoming queue)
 - `project_memory/lessons.md` (all lessons from prior milestones)
 
-### Prompt Template
+### Multi-Round Brainstorming Process
+
+Each round invokes `/scientific-brainstorming`. The pushback from each round becomes the input for the next.
+
+**Round 1 — Feasibility and approach**:
 
 ```
-I am entering the BRAINSTORM phase for milestone: "{milestone_name}".
+/scientific-brainstorming
 
-CONTEXT LOADED:
-- Goal: {goal_summary}
-- Completed milestones: {list_of_completed_milestones}
-- Current milestone objective: {milestone_objective}
-- Relevant lessons from prior work: {applicable_lessons}
+I'm working on milestone: "{milestone_name}" for the project goal: {goal_summary}.
 
-ROUND 1 — SCOPING AND APPROACH:
-1. What exactly does this milestone need to accomplish?
-2. What are the inputs and outputs?
-3. What are 2-3 possible approaches?
-4. What are the trade-offs between them?
-5. Are there lessons from prior milestones that apply here?
-6. What is the simplest approach that satisfies the acceptance criteria?
+Completed so far: {list_of_completed_milestones}
+Milestone objective: {milestone_objective}
+Lessons from prior work: {applicable_lessons}
 
-ROUND 2 — RISKS AND DEPENDENCIES (if needed):
-1. What could go wrong with the chosen approach?
-2. What dependencies does this milestone have on external systems, libraries, or prior work?
-3. Are there unknowns that must be resolved before planning?
-4. Does this milestone's scope still fit within the scoping rules (single session, 2-5 criteria, <15 files, independent value)?
+Questions to brainstorm:
+1. Is this milestone feasible as scoped?
+2. What are 2-3 possible approaches and their trade-offs?
+3. What is the simplest approach that satisfies the acceptance criteria?
+4. Are there any lessons from prior milestones that should influence the approach?
+5. What concerns or risks do you see?
+```
 
-DECISIONS TO RECORD:
-- Chosen approach and why.
+Collect output: recommended approach, concerns raised, open questions.
+
+**Round 2 — Address Round 1 pushback**:
+
+```
+/scientific-brainstorming
+
+Continuing brainstorm for milestone: "{milestone_name}".
+
+In the previous round, the following concerns and questions were raised:
+{list_of_concerns_and_questions_from_round_1}
+
+The recommended approach was: {approach_from_round_1}
+
+Let's address each concern:
+1. For each risk: how do we mitigate it? Is it a blocker or just a watch-item?
+2. For each open question: can we answer it now, or does it need to be resolved during planning?
+3. Does the recommended approach still hold, or should we pivot?
+4. Does the scope still fit the scoping rules (single session, 2-5 criteria, <15 files)?
+```
+
+Collect output: resolved concerns, remaining risks, refined approach.
+
+**Round 3+ — Continue until convergence** (if new significant concerns emerged):
+
+```
+/scientific-brainstorming
+
+Continuing brainstorm for milestone: "{milestone_name}", round {N}.
+
+Previous round raised these new concerns: {new_concerns_from_previous_round}
+Current approach: {refined_approach}
+
+Let's resolve these remaining issues and confirm the approach is solid.
+```
+
+**Convergence**: Stop when a round produces no new significant risks or questions.
+
+**After convergence, record in current_context.md**:
+- Chosen approach and why (with round number where decided).
+- Resolved concerns and how they were resolved.
+- Remaining risks to watch for during Plan/Execute.
 - Any scope adjustments made.
-- Risks acknowledged and mitigation strategies.
-- Open questions to carry into planning.
 
-RULES:
+**Rules**:
+- Always run at least 2 rounds — never skip the pushback-resolution cycle.
 - Do NOT write code or create files.
-- If the milestone is ambiguous, STOP and ask the user.
-- If lessons.md contains a directly relevant lesson, reference it explicitly.
-```
+- If still ambiguous after 3+ rounds, STOP and ask the user.
 
 ---
 

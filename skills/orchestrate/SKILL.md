@@ -29,24 +29,44 @@ Each milestone progresses through four phases in order. After the Review phase c
 
 ### Phase 1: Brainstorm
 
-**Purpose**: Understand the problem space for the current milestone. Explore scope, risks, approaches, and past lessons. Do NOT implement anything.
+**Purpose**: Validate feasibility and refine the approach for the current milestone through multiple rounds of `/scientific-brainstorming`. Each round surfaces problems; the next round addresses them. Do NOT implement anything.
 
 **Context to load**: goal file + `progress.md` + `lessons.md`
 
 **Procedure**:
 
 1. Summarize the current milestone's objective in the context of the overall goal.
-2. Conduct 1-2 rounds of brainstorming:
-   - **Round 1 — Scoping and approach**: What exactly needs to happen? What are 2-3 possible approaches? What are the trade-offs? What has been learned from previous milestones (check `lessons.md`)?
-   - **Round 2 — Risks and dependencies** (if needed): What could go wrong? What external dependencies exist? Are there unknowns that need resolving before planning?
-3. Re-scope the milestone if brainstorming reveals it is too large, too small, or misdirected. Update `progress.md` if the milestone definition changes.
-4. Record all key decisions and rationale in `current_context.md` under the "Key Decisions" section.
-5. Advance to Phase 2 (Plan).
+2. Conduct **multiple rounds** of `/scientific-brainstorming`, where each round builds on the pushback from the previous one:
+
+   **Round 1 — Feasibility and approach**:
+   - Invoke `/scientific-brainstorming` with: the milestone objective, relevant lessons from `lessons.md`, and the current project state.
+   - Ask: Is this milestone feasible as scoped? What are 2-3 candidate approaches? What are the trade-offs?
+   - Collect the output: recommended approach, concerns raised, open questions.
+
+   **Round 2 — Address Round 1 pushback**:
+   - Take every concern, question, and risk that Round 1 raised.
+   - Invoke `/scientific-brainstorming` again, this time focused on resolving those specific issues.
+   - Ask: How do we mitigate each risk? Can we answer each open question? Does the recommended approach still hold, or should we pivot?
+   - Collect the output: resolved concerns, remaining risks, refined approach.
+
+   **Round 3+ — Continue until convergence** (if needed):
+   - If Round 2 surfaced new significant concerns or changed the approach, run another round addressing the new pushback.
+   - Stop when a round produces **no new significant risks or questions** — the approach has converged.
+   - Typical milestone: 2-3 rounds. Complex or risky milestone: 3-5 rounds. Simple milestone: 2 rounds minimum.
+
+3. After convergence:
+   - Re-scope the milestone if brainstorming reveals it is too large, too small, or misdirected. Update `progress.md` if the milestone definition changes.
+   - Record **all** key decisions, resolved concerns, and remaining risks in `current_context.md` under "Key Decisions". Include which round produced each decision.
+   - Note any unresolved risks that the Plan and Execute phases should watch for.
+4. Advance to Phase 2 (Plan).
+
+**Convergence check**: A round has converged when `/scientific-brainstorming` responds with no new concerns, endorses the approach, and the only remaining items are implementation details (not feasibility questions).
 
 **Rules**:
 - Do not write code, create files, or make commits during this phase.
-- If a prior lesson directly applies, reference it explicitly and explain how it influences the approach.
-- If the milestone is ambiguous or blocked by unknowns, stop and ask the user (see "When to Stop and Ask the User").
+- Always run at least 2 rounds — never skip the pushback-resolution cycle.
+- If a prior lesson directly applies, feed it into Round 1 explicitly so brainstorming can build on it.
+- If the milestone is ambiguous or blocked by unknowns after 3+ rounds, stop and ask the user (see "When to Stop and Ask the User").
 
 ---
 
