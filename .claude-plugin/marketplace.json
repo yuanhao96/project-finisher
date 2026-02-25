@@ -15,11 +15,7 @@
       "name": "project-finisher",
       "description": "Autonomous iterative project completion agent with brainstorm/plan/execute/review workflow and markdown-based memory",
       "source": "./",
-      "strict": false,
-      "skills": [
-        "./skills/orchestrate/SKILL.md",
-        "./skills/memory/SKILL.md"
-      ]
+      "strict": true
     }
   ],
   "activation": {
