@@ -7,35 +7,35 @@ Ever wish you could hand Claude Code a goal file and walk away while it figures 
 ```mermaid
 flowchart TD
     START(["/finish --goal goal.md"]) --> CHECK{project_memory/ exists?}
-    CHECK -- No --> INIT["Initialize memory\nPropose 1-3 milestones"]
-    CHECK -- Yes --> RESUME["Resume from\ncurrent phase"]
+    CHECK -- No --> INIT["Initialize memory Propose 1-3 milestones"]
+    CHECK -- Yes --> RESUME["Resume from current phase"]
     INIT --> BRAINSTORM
     RESUME --> BRAINSTORM
 
     subgraph BRAINSTORM ["Phase 1: Brainstorm"]
         direction TB
-        B1["Round 1: Feasibility & approach\n/scientific-brainstorming"]
-        B1 -- "pushback" --> B2["Round 2: Address concerns\n/scientific-brainstorming"]
-        B2 -- "new concerns?" --> B3["Round 3+: Until convergence\n/scientific-brainstorming"]
-        B3 --> BOUT["Re-scope milestone\nRevise roadmap\nRecord decisions"]
+        B1["Round 1: Feasibility & approach /scientific-brainstorming"]
+        B1 -- "pushback" --> B2["Round 2: Address concerns /scientific-brainstorming"]
+        B2 -- "new concerns?" --> B3["Round 3+: Until convergence /scientific-brainstorming"]
+        B3 --> BOUT["Re-scope milestone Revise roadmap Record decisions"]
     end
 
     BRAINSTORM --> PLAN
 
     subgraph PLAN ["Phase 2: Plan"]
-        P1["Create step-by-step plan\nFiles, tasks, tests, dependencies\nSave to docs/plans/"]
+        P1["Create step-by-step plan Files, tasks, tests, dependencies Save to docs/plans/"]
     end
 
     PLAN --> EXECUTE
 
     subgraph EXECUTE ["Phase 3: Execute"]
-        E1["Implement plan steps\nWrite code + tests\nCommit after each unit\nHandle blockers"]
+        E1["Implement plan steps Write code + tests Commit after each unit Handle blockers"]
     end
 
     EXECUTE --> REVIEW
 
     subgraph REVIEW ["Phase 4: Review"]
-        R1["Run test suite\nCheck acceptance criteria\nCheck regressions\nUpdate lessons.md\nPropose new milestones"]
+        R1["Run test suite Check acceptance criteria Check regressions Update lessons.md Propose new milestones"]
     end
 
     REVIEW --> DONE{Goal reached?}
