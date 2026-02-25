@@ -1,6 +1,77 @@
 # project-finisher
 
-A Claude Code plugin that autonomously drives software projects from a high-level goal to completion through iterative brainstorm/plan/execute/review cycles. It maintains cross-session memory so work can resume seamlessly, breaks complex goals into manageable tasks, executes them, reviews the results, and loops until the project is done.
+Ever wish you could hand Claude Code a goal file and walk away while it figures out the architecture, writes the code, tests everything, and keeps going until it's done? That's what this plugin does. You describe what you want, point it at a project, and it runs an iterative loop — brainstorming approaches, planning implementation, writing code, and reviewing its own work — until the goal is met. It remembers where it left off between sessions, so even large projects can be tackled across multiple sittings.
+
+## Workflow Overview
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    STARTUP                           │
+│  Read goal file → Check for project_memory/         │
+│  Resume existing session OR initialize new one      │
+│  Propose initial milestones (1-3)                   │
+└──────────────────────┬──────────────────────────────┘
+                       │
+          ┌────────────▼────────────┐
+          │  PHASE 1: BRAINSTORM    │ ◄── Multi-round /scientific-brainstorming
+          │                         │
+          │  Round 1: Feasibility   │
+          │     ↓ pushback          │
+          │  Round 2: Address R1    │
+          │     ↓ pushback          │
+          │  Round 3+: Until        │
+          │     convergence         │
+          │                         │
+          │  Then:                  │
+          │  • Re-scope milestone   │
+          │  • Revise roadmap       │ ◄── Can add/split/reorder/remove milestones
+          │  • Record decisions     │
+          └────────────┬────────────┘
+                       │
+          ┌────────────▼────────────┐
+          │  PHASE 2: PLAN          │
+          │                         │
+          │  Create step-by-step    │
+          │  implementation plan    │
+          │  with files, tasks,     │
+          │  tests, dependencies    │
+          │                         │
+          │  Save to docs/plans/    │
+          └────────────┬────────────┘
+                       │
+          ┌────────────▼────────────┐
+          │  PHASE 3: EXECUTE       │
+          │                         │
+          │  Implement plan steps   │
+          │  Write code + tests     │
+          │  Commit after each unit │
+          │  Handle blockers        │
+          └────────────┬────────────┘
+                       │
+          ┌────────────▼────────────┐
+          │  PHASE 4: REVIEW        │
+          │                         │
+          │  Run test suite         │
+          │  Check acceptance       │
+          │  criteria               │
+          │  Check regressions      │
+          │  Update lessons.md      │
+          │  Propose new milestones │
+          │  Re-prioritize queue    │
+          └────────────┬────────────┘
+                       │
+              ┌────────▼────────┐
+              │  Goal reached?  │
+              │                 │
+              │  YES → Stop     │
+              │  NO  → Next     │──── back to Phase 1
+              │  milestone      │
+              └─────────────────┘
+```
+
+**Roadmap changes** happen at two points: Brainstorm (re-scope, add prerequisites, split, reorder) and Review (propose new milestones, re-prioritize).
+
+**The plugin stops to ask you** when the goal is ambiguous, approaches are equally viable, external resources are needed, the project has diverged from the goal, or the same milestone has failed twice.
 
 ## Prerequisites
 
@@ -47,17 +118,6 @@ To target a specific project directory (defaults to the current working director
 ```
 
 The plugin will read your goal, assess the current state of the project, and begin iterating autonomously until the goal is satisfied.
-
-## How It Works — The 4-Phase Cycle
-
-Each iteration runs through four phases:
-
-1. **Brainstorm** — Analyze the goal and the current state of the project. Identify what needs to happen next, surface unknowns, and generate candidate approaches.
-2. **Plan** — Select the best approach from the brainstorm output and produce a concrete, ordered list of tasks with acceptance criteria.
-3. **Execute** — Carry out the planned tasks: write code, run commands, create files, install dependencies, and wire things together.
-4. **Review** — Evaluate what was accomplished against the plan and the original goal. Decide whether the goal is met or another cycle is needed.
-
-The cycle repeats until the review phase confirms the project goal has been fully achieved.
 
 ## Memory Files
 
