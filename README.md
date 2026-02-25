@@ -2,6 +2,24 @@
 
 A Claude Code plugin that autonomously drives software projects from a high-level goal to completion through iterative brainstorm/plan/execute/review cycles. It maintains cross-session memory so work can resume seamlessly, breaks complex goals into manageable tasks, executes them, reviews the results, and loops until the project is done.
 
+## Prerequisites
+
+This plugin depends on skills from these plugins:
+
+| Plugin | Used In | Purpose |
+|--------|---------|---------|
+| `scientific-skills@claude-scientific-skills` | Brainstorm phase | `/scientific-brainstorming` for feasibility analysis |
+| `superpowers@claude-plugins-official` | Plan phase | `/superpowers:write-plan` for structured implementation plans |
+
+Install them first if you don't already have them:
+
+```bash
+claude plugin marketplace add https://github.com/K-Dense-AI/claude-scientific-skills.git
+claude plugin install scientific-skills@claude-scientific-skills
+
+claude plugin install superpowers@claude-plugins-official
+```
+
 ## Installation
 
 ```bash
