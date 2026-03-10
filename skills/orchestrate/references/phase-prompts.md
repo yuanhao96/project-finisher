@@ -280,25 +280,73 @@ REVIEW PROCEDURE:
 7. SQUASH-MERGE TO DEFAULT BRANCH (only if ALL criteria met):
    - git checkout <default-branch>
    - git merge --squash pf/milestone-{N}
-   - Create squash commit with rich message:
+   - Create squash commit with a rich, structured message.
+     Read `current_context.md` "Key Decisions" section and `progress.md` acceptance criteria.
+     Use this exact format:
+
      ```
      Milestone {N}: {milestone_name}
 
-     Objective: {milestone_objective}
-     Key decisions:
-     - {decision 1}
-     - {decision 2}
-     Acceptance criteria: all passed
-     Files changed: {summary}
-     ```
-   - Rewrite project_memory/ files to reflect current state (overwrite, not merge).
-   - git commit -m "pf: update project memory after milestone {N}"
+     ## Objective
+     {milestone_objective — one sentence from progress.md}
 
-8. ARCHIVE MILESTONE BRANCH:
+     ## Key Decisions
+     - {decision 1 — copy verbatim from current_context.md, include [AUTO] prefix if present}
+     - {decision 2}
+     - ...
+
+     ## Acceptance Criteria
+     - [x] {criterion 1}
+     - [x] {criterion 2}
+     - ...
+
+     ## Files Changed
+     {output of: git diff --stat <default-branch>}
+
+     ## Lessons
+     {one-line summary of what worked and what didn't — from lessons.md entry for this milestone}
+     ```
+
+     The Key Decisions section is the primary audit trail. Include ALL decisions
+     from current_context.md, not just a summary. If a decision was auto-made,
+     preserve the [AUTO] tag so the user can identify autonomous choices.
+
+   - Rewrite project_memory/ files to reflect current state (overwrite, not merge).
+   - Commit everything together:
+     git add -A
+     git commit (with the rich message above)
+
+8. UPDATE CHANGELOG:
+   - If `CHANGELOG.md` exists at the project root, prepend the new milestone entry.
+   - If it does not exist, create it.
+   - Format:
+
+     ```
+     # Changelog
+
+     ## Milestone {N}: {milestone_name} — {YYYY-MM-DD}
+     {milestone_objective — one sentence}
+
+     **Key changes:**
+     - {one-line summary per major change, derived from the plan steps}
+
+     **Decisions:**
+     - {key decision 1}
+     - {key decision 2}
+
+     ---
+
+     ## Milestone {N-1}: {previous milestone} — {date}
+     ...
+     ```
+
+   - Commit: git add CHANGELOG.md && git commit -m "pf: changelog — milestone {N}"
+
+9. ARCHIVE MILESTONE BRANCH:
    - git branch -m pf/milestone-{N} archive/pf/milestone-{N}
    - The archived branch preserves full incremental commit history.
 
-9. DECIDE NEXT ACTION:
+10. DECIDE NEXT ACTION:
    - If the overall project goal is satisfied:
      - Generate a completion report.
      - STOP the loop.

@@ -200,9 +200,11 @@ main ─── [squash M1] ─── [squash M2] ─── [squash M3] ───
 - **Inspect step-by-step history**: Check out `archive/pf/milestone-N`
 - **Undo single step**: `git revert HEAD` on the milestone branch during execute
 
-### Doc Updates
+### Doc Updates & Changelog
 
-Before squash-merging, the plugin checks if user-facing behavior changed and updates relevant docs (README.md, CLAUDE.md, plugin.json, SKILL.md files). This ensures documentation stays current with each milestone.
+Before squash-merging, the plugin checks if user-facing behavior changed and updates relevant docs (README.md, CLAUDE.md, plugin.json, SKILL.md files). It also maintains a `CHANGELOG.md` at the project root — each milestone gets an entry with its objective, key changes, and decisions.
+
+The squash-merge commit itself contains a structured message with the full decision audit trail, acceptance criteria, and files changed — queryable via `git log`.
 
 ### Conflict Handling
 

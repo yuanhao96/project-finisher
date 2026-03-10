@@ -183,18 +183,24 @@ Each milestone progresses through four phases in order. After the Review phase c
 7. **Squash-merge to default branch** (only if acceptance criteria are all met):
    - Switch to the default branch: `git checkout <default-branch>`.
    - Squash-merge the milestone branch: `git merge --squash pf/milestone-N`.
-   - Create a single commit with a rich message containing:
-     - Milestone name and objective
-     - Key decisions made (from `current_context.md`)
-     - Acceptance criteria status (all passed)
-     - Files changed summary
+   - Create a single commit with a structured message containing (see `references/phase-prompts.md` for exact format):
+     - **Objective**: One-sentence milestone objective
+     - **Key Decisions**: ALL decisions from `current_context.md`, verbatim, preserving `[AUTO]` tags
+     - **Acceptance Criteria**: Checkboxes showing all criteria passed
+     - **Files Changed**: Output of `git diff --stat`
+     - **Lessons**: One-line summary from `lessons.md`
    - Rewrite `project_memory/` files on the default branch to reflect the current state (overwrite, not merge — these are state files, history is in git).
-   - Commit the `project_memory/` update: `pf: update project memory after milestone N`.
-8. **Archive the milestone branch**:
+   - Stage and commit everything together.
+8. **Update CHANGELOG.md**:
+   - If `CHANGELOG.md` exists at the project root, prepend the new milestone entry.
+   - If it does not exist, create it.
+   - Each entry includes: milestone name, date, objective, key changes (from plan steps), and key decisions.
+   - Commit: `pf: changelog — milestone N`.
+9. **Archive the milestone branch**:
    - Rename the milestone branch: `git branch -m pf/milestone-N archive/pf/milestone-N`.
    - The archived branch preserves the full incremental commit history for that milestone. It can be inspected later if needed.
-9. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, and tool usage patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
-10. **Decide next action**:
+10. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, and tool usage patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
+11. **Decide next action**:
     - If the overall project goal is satisfied: Generate a completion report summarizing all milestones, total work done, and final state. Stop the loop.
     - If more milestones remain: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
 
