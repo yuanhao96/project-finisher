@@ -22,7 +22,7 @@ The evolve skill observes how the user works with Claude Code and updates `workf
 
 | File | Location | Purpose |
 |------|----------|---------|
-| Raw tool log | `~/.claude/project-finisher-data/behavior_log.jsonl` | Append-only log from PostToolUse hook |
+| Raw tool log | `~/.claude/project-finisher-data/behavior_log.jsonl` | Rolling log from PostToolUse hook (last 100 entries kept) |
 | Preferences | `~/.claude/project-finisher-data/workflow_preferences.md` | Extracted stable preferences (the "learned" file) |
 
 ---
@@ -30,6 +30,17 @@ The evolve skill observes how the user works with Claude Code and updates `workf
 ## Observe & Extract Procedure
 
 At the end of a session, perform the following analysis:
+
+### Step 0: Prune the Behavior Log
+
+Before analyzing, trim `behavior_log.jsonl` to the most recent **100 entries** to prevent unbounded growth. Older entries have already been distilled into `workflow_preferences.md`, so they are safe to discard.
+
+```bash
+LOG=~/.claude/project-finisher-data/behavior_log.jsonl
+if [ -f "$LOG" ] && [ "$(wc -l < "$LOG")" -gt 100 ]; then
+  tail -n 100 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+fi
+```
 
 ### Step 1: Reflect on This Session
 

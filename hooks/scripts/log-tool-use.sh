@@ -26,3 +26,10 @@ mkdir -p "$LOG_DIR"
 printf '{"ts":"%s","tool":"%s","project":"%s","session":"%s"}\n' \
   "$TIMESTAMP" "$TOOL_NAME" "$PROJECT_DIR" "$SESSION_ID" \
   >> "$LOG_FILE"
+
+# Prune to last 100 entries to prevent unbounded growth
+MAX_LINES=100
+LINE_COUNT=$(wc -l < "$LOG_FILE" 2>/dev/null || echo 0)
+if [ "$LINE_COUNT" -gt "$MAX_LINES" ]; then
+  tail -n "$MAX_LINES" "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+fi
