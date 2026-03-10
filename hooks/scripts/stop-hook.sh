@@ -14,13 +14,6 @@ set -euo pipefail
 STATE_FILE=".claude/pf-loop.state.json"
 PROGRESS_FILE="project_memory/progress.md"
 LOG_DIR="${HOME}/.claude/project-finisher-data"
-EVOLVE_FLAG="${LOG_DIR}/needs_evolve"
-
-# ------------------------------------------------------------------
-# 0. Always set the evolve flag so the next session updates preferences
-# ------------------------------------------------------------------
-mkdir -p "$LOG_DIR"
-date -u +"%Y-%m-%dT%H:%M:%SZ" > "$EVOLVE_FLAG"
 
 # ------------------------------------------------------------------
 # 1. Check if continuous loop is active

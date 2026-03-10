@@ -13,8 +13,10 @@ The evolve skill observes how the user works with Claude Code and updates `workf
 ## When to Run
 
 1. **Orchestrator startup** — Before entering Phase 1 of a new milestone, run the "Apply" procedure to load current preferences.
-2. **End of any session** — Run the "Observe & Extract" procedure to update preferences based on this session's behavior.
+2. **Session start (automatic)** — The `session-start.sh` hook runs `analyze-sessions.py` which deterministically updates quantitative stats (tool counts, session log, session count). If new sessions are found, it writes `pending_session_analysis.json` and the hook prompts the LLM to update qualitative fields (pacing style, depth, workflow ordering assessments).
 3. **On demand** — When the user asks to review or reset their workflow preferences.
+
+> **Note:** The old approach of running "Observe & Extract" at session end via a `needs_evolve` flag has been replaced by the two-layer startup system. Layer 1 (Python script) handles quantitative updates deterministically. Layer 2 (LLM prompt) handles qualitative interpretation. This is robust to abrupt session termination.
 
 ---
 
