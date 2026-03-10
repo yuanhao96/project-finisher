@@ -176,6 +176,7 @@ WHEN BLOCKED:
 - Skip to the next step that does not depend on the blocker.
 - Normal mode: If all remaining steps depend on the blocker, STOP and ask the user.
 - Auto mode: If all remaining steps depend on the blocker, attempt an alternative approach. If no alternative works, log the blocker as [AUTO-BLOCKED] in current_context.md and advance to Review with partial completion.
+- Continuous mode + unresolvable blocker (e.g., needs API keys): Output <pf-signal>BLOCKED:description</pf-signal> to stop the loop.
 
 RULES:
 - Follow the plan. Do not add unplanned work.
@@ -253,10 +254,18 @@ COMPLETION REPORT FORMAT (when goal is satisfied):
 - Lessons learned (highlights).
 - Final project state.
 
+CONTINUOUS LOOP SIGNALS (output these when in continuous mode):
+- After generating the completion report (goal satisfied):
+  Output: <pf-signal>GOAL_COMPLETE</pf-signal>
+- If blocked and cannot continue autonomously:
+  Output: <pf-signal>BLOCKED:description of why</pf-signal>
+- If advancing to the next milestone (goal NOT yet satisfied):
+  Do NOT output any signal — the stop hook will re-invoke automatically.
+
 RULES:
 - Be honest about criteria. "Met" requires evidence, not assumption.
 - Do not skip regression checks.
 - Always write lessons, even if everything went smoothly.
 - Normal mode: If this milestone has failed review twice, STOP and ask the user.
-- Auto mode: If this milestone has failed review twice, re-scope it smaller. If it fails a third time, skip it and log the failure in lessons.md.
+- Auto mode: If this milestone has failed review twice, re-scope it smaller. If it fails a third time, skip it and log the failure in lessons.md. If skipping, output <pf-signal>BLOCKED:Milestone "{milestone_name}" failed 3 times — requires user intervention</pf-signal>.
 ```

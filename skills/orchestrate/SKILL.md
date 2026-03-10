@@ -15,11 +15,12 @@ The orchestrator is the central brain of project-finisher. It drives the iterati
 When the orchestrator is invoked, execute the following steps in order:
 
 1. **Read the goal file** — Load the user-provided goal file (passed via `--goal`). This is the immutable source of truth for the project.
-2. **Check for existing memory** — Look for a `project_memory/` directory at the project root.
+2. **Load workflow preferences** — Read `~/.claude/project-finisher-data/workflow_preferences.md` if it exists. This file contains learned user behavior patterns (pacing, depth, workflow ordering, tool preferences) that adapt how the orchestrator operates. Apply the adaptations described in the evolve skill's "Apply Procedure" throughout this session. If the file does not exist, use default behavior (no adaptations).
+3. **Check for existing memory** — Look for a `project_memory/` directory at the project root.
    - **If `project_memory/` exists (resume)**: Read `progress.md` to determine the current milestone and its phase. Read `current_context.md` for active working state. Enter the appropriate phase for the current milestone.
    - **If `project_memory/` does not exist (initialize)**: Create the `project_memory/` directory. Initialize `progress.md`, `current_context.md`, and `lessons.md` using the templates from the memory skill. Extract the goal summary from the goal file into `progress.md`. Propose the first 1-3 milestones based on the goal. Set the first milestone as current and enter the Brainstorm phase.
-3. **Identify current milestone and phase** — From `progress.md`, read the current milestone name and phase (brainstorm, plan, execute, or review).
-4. **Enter the phase** — Jump to the matching phase in the iteration loop below. Load only the context that phase requires (see the memory skill's reading table).
+4. **Identify current milestone and phase** — From `progress.md`, read the current milestone name and phase (brainstorm, plan, execute, or review).
+5. **Enter the phase** — Jump to the matching phase in the iteration loop below. Load only the context that phase requires (see the memory skill's reading table).
 
 ---
 
@@ -157,7 +158,8 @@ Each milestone progresses through four phases in order. After the Review phase c
    - If criteria are not met: Note what remains and decide whether to re-enter Execute or re-plan.
    - Propose 1-3 new upcoming milestones based on what was learned and what remains toward the goal.
    - Re-prioritize the upcoming milestone queue.
-6. **Decide next action**:
+6. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, and tool usage patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
+7. **Decide next action**:
    - If the overall project goal is satisfied: Generate a completion report summarizing all milestones, total work done, and final state. Stop the loop.
    - If more milestones remain: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
 
@@ -165,6 +167,7 @@ Each milestone progresses through four phases in order. After the Review phase c
 - Be honest about acceptance criteria. A criterion is met only if it can be demonstrated, not merely if the code "looks right".
 - Do not skip the regression check. If regressions are found, they become blockers for the next milestone or require re-opening the current one.
 - Always write lessons, even if the milestone went smoothly. "It went as planned" is itself a useful signal.
+- Always run the evolve step — behavioral observation is what makes the workflow self-improving.
 
 ---
 
@@ -234,6 +237,31 @@ When **auto mode** is active (passed from the `/finish --auto` command), the orc
 
 **Logging requirement**: Every auto-decided choice must be logged in `current_context.md` under "Key Decisions" with the prefix `[AUTO]` so the user can review all autonomous decisions after the session. Example:
 > `[AUTO] Chose approach A (file-based caching) over approach B (Redis) — simpler, no external dependency, sufficient for the current scale. Brainstorming Round 1 recommended this approach.`
+
+---
+
+## Continuous Loop Signals
+
+When operating in **continuous mode** (`.claude/pf-loop.state.json` exists), the orchestrator must output exit signals at specific points so the Stop hook knows when to end the loop.
+
+### Signal Format
+
+Signals are XML tags in the assistant's output: `<pf-signal>SIGNAL</pf-signal>`
+
+### Available Signals
+
+| Signal | When to Output | Effect |
+|--------|---------------|--------|
+| `<pf-signal>GOAL_COMPLETE</pf-signal>` | All milestones are completed and the project goal is fully satisfied. Output this in the Review phase after confirming goal satisfaction. | Loop ends cleanly. State file removed. |
+| `<pf-signal>BLOCKED:reason</pf-signal>` | The workflow cannot continue autonomously. Examples: external credentials needed, repeated failure (3+ times on same milestone), ambiguous goal that auto mode cannot resolve. | Loop ends. User sees the reason. |
+
+### Rules
+
+- **Always output GOAL_COMPLETE** when the completion report is generated in Phase 4 and no more milestones remain. Do not let the session end without the signal — the hook needs it to know the loop is done.
+- **Output BLOCKED** as early as possible when a true blocker is identified. Do not waste iterations trying to work around something that requires user input.
+- **Do not output signals prematurely**. Completing a single milestone is NOT goal completion — only output GOAL_COMPLETE when the entire project goal is satisfied.
+- **Between milestones**, do not output any signal. The hook will re-invoke the workflow, which will read `progress.md` and continue with the next milestone naturally.
+- If continuous mode is not active (no `.claude/pf-loop.state.json`), signals are ignored. It is safe to always include them.
 
 ---
 

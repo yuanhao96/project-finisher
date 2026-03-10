@@ -1,7 +1,7 @@
 ---
 name: finish
 description: "Start or continue the project-finisher autonomous completion workflow"
-argument-hint: "--goal <path> [--project <path>] [--auto]"
+argument-hint: "--goal <path> [--project <path>] [--auto] [--continuous]"
 ---
 
 # /finish Command
@@ -13,6 +13,7 @@ Extract the following from the user's command:
 - `--goal <path>`: Path to the goal file. **Required** on first run (when no `project_memory/` directory exists).
 - `--project <path>`: Path to the target project directory. Defaults to the current working directory if not provided.
 - `--auto`: Enable **auto mode**. When set, the workflow runs with minimal user interaction — all decision points that would normally stop and ask the user are resolved automatically by the orchestrator (see "Auto Mode" below).
+- `--continuous`: Enable **continuous loop mode**. Requires `--auto`. When Claude finishes a session, a Stop hook automatically re-invokes the workflow with a phase-appropriate prompt. The loop continues until all milestones are complete, a blocker is hit, or iteration budgets are exhausted. See "Continuous Mode" below.
 
 Resolve all paths to absolute paths before proceeding.
 
@@ -34,6 +35,70 @@ Auto mode is propagated to the orchestrate skill so it applies throughout all ph
 2. If the brainstorming output explicitly recommends an approach → follow the recommendation.
 3. If options are truly equivalent → choose the simplest one (fewest files, fewest dependencies, most conventional approach).
 4. Document the choice and reasoning in `current_context.md` so the user can review it later.
+
+---
+
+## Continuous Mode
+
+When `--continuous` is passed (must be combined with `--auto`), the workflow persists across session boundaries automatically via a Stop hook.
+
+### Setup
+
+On first invocation with `--continuous`, create the loop state file at `.claude/pf-loop.state.json`:
+
+```json
+{
+  "active": true,
+  "started_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "total_iterations": 0,
+  "max_total": 30,
+  "budgets": {
+    "brainstorm": 3,
+    "plan": 2,
+    "execute": 8,
+    "review": 3
+  },
+  "phase_iterations": {},
+  "last_phase": "",
+  "last_milestone": ""
+}
+```
+
+Create the `.claude/` directory if it does not exist.
+
+### How It Works
+
+1. The Stop hook (`hooks/scripts/stop-hook.sh`) fires whenever Claude attempts to exit.
+2. It reads `.claude/pf-loop.state.json` — if absent, exit is allowed normally.
+3. It checks for **exit signals** in Claude's last message:
+   - `<pf-signal>GOAL_COMPLETE</pf-signal>` — All milestones satisfied. Loop ends.
+   - `<pf-signal>BLOCKED:reason</pf-signal>` — Cannot continue autonomously. Loop ends.
+4. It checks iteration budgets (per-phase and total). If exhausted, loop ends.
+5. Otherwise, it reads `project_memory/progress.md` for the current phase and milestone, generates a **phase-appropriate resume prompt**, and blocks exit.
+6. Claude starts a fresh session with the resume prompt and continues the workflow.
+
+### Phase Iteration Budgets
+
+Each phase has a maximum number of iterations (sessions) it can consume before the loop exits:
+
+| Phase | Default Budget | Rationale |
+|-------|---------------|-----------|
+| brainstorm | 3 | 2-3 rounds typical; more suggests the milestone needs re-scoping |
+| plan | 2 | Planning should converge quickly |
+| execute | 8 | Largest phase; complex milestones may need multiple sessions |
+| review | 3 | Allows re-entry to execute if criteria aren't met |
+
+The total iteration cap (`max_total`: 30) is a safety net across all milestones.
+
+**Important**: If any phase exhausts its budget, the **entire continuous loop terminates** (not just the phase). This is a safety measure — a phase consuming its full budget suggests the milestone needs re-scoping or user attention. The event is logged to `~/.claude/project-finisher-data/loop_events.log`.
+
+### Phase Iteration Reset
+
+When the stop hook detects that `last_phase` in the state file differs from the current phase in `progress.md`, the phase iteration counter resets to 0 for the new phase. This means advancing from brainstorm to plan resets the counter, giving the plan phase its full budget.
+
+### Cancellation
+
+Use `/cancel-loop` to stop the continuous loop at any time. This removes `.claude/pf-loop.state.json`.
 
 ---
 
@@ -81,7 +146,9 @@ Execute these steps in order:
    - **Normal mode**: Ask the user to approve, modify, or reorder the milestones.
    - **Auto mode**: Display the milestones for the record, then approve them automatically and proceed.
 
-7. **Once approved**, write the milestones to `progress.md` (first as current, rest as upcoming) and begin the orchestration loop by invoking the orchestrate skill. Pass the `--auto` flag through to the orchestrate skill if auto mode is active.
+7. **If `--continuous` is active**, create `.claude/pf-loop.state.json` with the default budgets (see "Continuous Mode" above). Create the `.claude/` directory if needed.
+
+8. **Once approved**, write the milestones to `progress.md` (first as current, rest as upcoming) and begin the orchestration loop by invoking the orchestrate skill. Pass the `--auto` flag through to the orchestrate skill if auto mode is active.
 
 ---
 
