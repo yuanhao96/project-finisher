@@ -6,7 +6,7 @@ version: 0.1.0
 
 # Orchestrator Skill
 
-The orchestrator is the central brain of project-finisher. It drives the iterative brainstorm/plan/execute/review loop, manages milestone progression, and coordinates with the memory skill to persist state across sessions.
+The orchestrator is the central brain of project-finisher. It drives the iterative brainstorm/plan/execute/review loop, manages milestone progression, coordinates with the memory skill to persist state across sessions, and uses git for version control, rollback, and auditability.
 
 ---
 
@@ -16,11 +16,14 @@ When the orchestrator is invoked, execute the following steps in order:
 
 1. **Read the goal file** — Load the user-provided goal file (passed via `--goal`). This is the immutable source of truth for the project.
 2. **Load workflow preferences** — Read `~/.claude/project-finisher-data/workflow_preferences.md` if it exists. This file contains learned user behavior patterns (pacing, depth, workflow ordering, tool preferences) that adapt how the orchestrator operates. Apply the adaptations described in the evolve skill's "Apply Procedure" throughout this session. If the file does not exist, use default behavior (no adaptations).
-3. **Check for existing memory** — Look for a `project_memory/` directory at the project root.
+3. **Initialize git repository** — Check if the target project has a git repository (`git rev-parse --git-dir`).
+   - **If no git repo exists**: Run `git init`. Create a `.gitignore` with at minimum: `.claude/`, `.DS_Store`, `__pycache__/`, `*.pyc`, `node_modules/`, `.env`. Make an initial commit with the existing project files (or an empty initial commit if the project is new).
+   - **If a git repo exists**: Record the default branch name (e.g., `main`, `master`) for later use. Ensure the working tree is clean — if there are uncommitted changes, warn the user and suggest committing or stashing before proceeding.
+4. **Check for existing memory** — Look for a `project_memory/` directory at the project root.
    - **If `project_memory/` exists (resume)**: Read `progress.md` to determine the current milestone and its phase. Read `current_context.md` for active working state. Enter the appropriate phase for the current milestone.
    - **If `project_memory/` does not exist (initialize)**: Create the `project_memory/` directory. Initialize `progress.md`, `current_context.md`, and `lessons.md` using the templates from the memory skill. Extract the goal summary from the goal file into `progress.md`. Propose the first 1-3 milestones based on the goal. Set the first milestone as current and enter the Brainstorm phase.
-4. **Identify current milestone and phase** — From `progress.md`, read the current milestone name and phase (brainstorm, plan, execute, or review).
-5. **Enter the phase** — Jump to the matching phase in the iteration loop below. Load only the context that phase requires (see the memory skill's reading table).
+5. **Identify current milestone and phase** — From `progress.md`, read the current milestone name and phase (brainstorm, plan, execute, or review).
+6. **Enter the phase** — Jump to the matching phase in the iteration loop below. Load only the context that phase requires (see the memory skill's reading table).
 
 ---
 
@@ -33,6 +36,13 @@ Each milestone progresses through four phases in order. After the Review phase c
 **Purpose**: Validate feasibility and refine the approach for the current milestone through multiple rounds of `/scientific-brainstorming`. Each round surfaces problems; the next round addresses them. Do NOT implement anything.
 
 **Context to load**: goal file + `progress.md` + `lessons.md`
+
+**Git actions at phase start**:
+1. Determine the milestone number (count of completed milestones + 1).
+2. Check if `pf/milestone-N` already exists (session resume):
+   - **If yes**: Check it out (`git checkout pf/milestone-N`) and continue where you left off.
+   - **If no**: Create and checkout a new branch off the default branch (`git checkout -b pf/milestone-N <default-branch>`).
+3. If the default branch has new commits since the last milestone (e.g., user made manual changes), merge the default branch into the milestone branch: `git merge <default-branch>`. If merge conflicts occur, output `<pf-signal>BLOCKED:Merge conflict with user changes on default branch — manual resolution needed</pf-signal>` and stop.
 
 **Procedure**:
 
@@ -69,7 +79,7 @@ Each milestone progresses through four phases in order. After the Review phase c
 **Convergence check**: A round has converged when `/scientific-brainstorming` responds with no new concerns, endorses the approach, and the only remaining items are implementation details (not feasibility questions).
 
 **Rules**:
-- Do not write code, create files, or make commits during this phase.
+- Do not write code or create project files during this phase. The only commits allowed are `project_memory/` updates (brainstorm decisions).
 - Always run at least 2 rounds — never skip the pushback-resolution cycle.
 - If a prior lesson directly applies, feed it into Round 1 explicitly so brainstorming can build on it.
 - If the milestone is ambiguous or blocked by unknowns after 3+ rounds, stop and ask the user (see "When to Stop and Ask the User").
@@ -116,22 +126,23 @@ Each milestone progresses through four phases in order. After the Review phase c
 
 **Procedure**:
 
-1. Work through the steps in `current_context.md` "Plan Reference > Steps" in order.
-2. For each step:
+1. Ensure you are on the `pf/milestone-N` branch. If not, check it out.
+2. Work through the steps in `current_context.md` "Plan Reference > Steps" in order.
+3. For each step:
    - Implement the change (code, configuration, documentation).
    - Run relevant tests or checks to verify the step.
    - Check off the step in `current_context.md`.
-   - Commit the work with a descriptive message if the step represents a logical unit.
-3. If blocked on a step:
+   - **Commit incrementally**: After each logical unit of work, create a commit on the milestone branch with a descriptive message (e.g., `pf: step 3 — add authentication middleware`). These incremental commits provide a safety net during execution. If something breaks, you can roll back to the last good commit within the milestone.
+4. If blocked on a step:
    - Record the blocker in `current_context.md` under "Blockers".
    - Attempt to resolve it (search for solutions, try alternative approaches).
    - If the blocker cannot be resolved autonomously, note it and continue with non-dependent steps.
    - If all remaining steps depend on the blocker, stop and ask the user.
-4. After all steps are complete (or all non-blocked steps are done), advance to Phase 4 (Review).
+5. After all steps are complete (or all non-blocked steps are done), advance to Phase 4 (Review).
 
 **Rules**:
 - Follow the plan. Do not add unplanned work unless it is strictly necessary to complete a planned step.
-- Keep commits atomic and well-described.
+- Keep commits atomic and well-described. Prefix commit messages with `pf:` for traceability.
 - Do not refactor unrelated code during execution.
 - If a planned step turns out to be unnecessary, skip it and note why in `current_context.md`.
 
@@ -139,7 +150,7 @@ Each milestone progresses through four phases in order. After the Review phase c
 
 ### Phase 4: Review
 
-**Purpose**: Evaluate the milestone against its acceptance criteria. Capture lessons. Decide what comes next.
+**Purpose**: Evaluate the milestone against its acceptance criteria. Capture lessons. Update docs. Squash-merge and archive the milestone branch. Decide what comes next.
 
 **Context to load**: `progress.md` + `current_context.md` + `lessons.md`
 
@@ -155,19 +166,45 @@ Each milestone progresses through four phases in order. After the Review phase c
    - Patterns to avoid.
 5. **Update progress.md**:
    - If all acceptance criteria are met: Move the milestone to "Completed Milestones" with a date and summary.
-   - If criteria are not met: Note what remains and decide whether to re-enter Execute or re-plan.
+   - If criteria are not met: Note what remains and decide whether to re-enter Execute or re-plan. Skip steps 6-8 (doc-check, squash, archive) — they only run on milestone completion.
    - Propose 1-3 new upcoming milestones based on what was learned and what remains toward the goal.
    - Re-prioritize the upcoming milestone queue.
-6. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, and tool usage patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
-7. **Decide next action**:
-   - If the overall project goal is satisfied: Generate a completion report summarizing all milestones, total work done, and final state. Stop the loop.
-   - If more milestones remain: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
+6. **Doc-check and update** (only if acceptance criteria are all met):
+   - Scan which files were modified during this milestone (`git diff --name-only <default-branch>...HEAD`).
+   - Determine if any user-facing behavior changed (new commands, changed APIs, new features, modified workflows).
+   - If yes, update the relevant documentation:
+     | Doc | Update when... |
+     |-----|---------------|
+     | **README.md** | New user-facing feature, changed usage, new commands |
+     | **CLAUDE.md** | Changed project structure, new conventions, new workflows |
+     | **plugin.json** | Version bump if milestone adds features |
+     | **SKILL.md files** | Skill behavior changed |
+   - Commit doc updates on the milestone branch: `pf: docs — update for milestone N`.
+7. **Squash-merge to default branch** (only if acceptance criteria are all met):
+   - Switch to the default branch: `git checkout <default-branch>`.
+   - Squash-merge the milestone branch: `git merge --squash pf/milestone-N`.
+   - Create a single commit with a rich message containing:
+     - Milestone name and objective
+     - Key decisions made (from `current_context.md`)
+     - Acceptance criteria status (all passed)
+     - Files changed summary
+   - Rewrite `project_memory/` files on the default branch to reflect the current state (overwrite, not merge — these are state files, history is in git).
+   - Commit the `project_memory/` update: `pf: update project memory after milestone N`.
+8. **Archive the milestone branch**:
+   - Rename the milestone branch: `git branch -m pf/milestone-N archive/pf/milestone-N`.
+   - The archived branch preserves the full incremental commit history for that milestone. It can be inspected later if needed.
+9. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, and tool usage patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
+10. **Decide next action**:
+    - If the overall project goal is satisfied: Generate a completion report summarizing all milestones, total work done, and final state. Stop the loop.
+    - If more milestones remain: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
 
 **Rules**:
 - Be honest about acceptance criteria. A criterion is met only if it can be demonstrated, not merely if the code "looks right".
 - Do not skip the regression check. If regressions are found, they become blockers for the next milestone or require re-opening the current one.
 - Always write lessons, even if the milestone went smoothly. "It went as planned" is itself a useful signal.
 - Always run the evolve step — behavioral observation is what makes the workflow self-improving.
+- Never skip the doc-check. Undocumented features create debt for future milestones.
+- The squash-merge commit message is the primary audit trail — make it thorough.
 
 ---
 
@@ -262,6 +299,52 @@ Signals are XML tags in the assistant's output: `<pf-signal>SIGNAL</pf-signal>`
 - **Do not output signals prematurely**. Completing a single milestone is NOT goal completion — only output GOAL_COMPLETE when the entire project goal is satisfied.
 - **Between milestones**, do not output any signal. The hook will re-invoke the workflow, which will read `progress.md` and continue with the next milestone naturally.
 - If continuous mode is not active (no `.claude/pf-loop.state.json`), signals are ignored. It is safe to always include them.
+
+---
+
+## Version Control Strategy
+
+Project-finisher uses git for rollback, auditability, and milestone isolation. This section summarizes the git workflow.
+
+### Branch Model
+
+```
+<default-branch> ─── squash merge ─── squash merge ─── ...
+  \                    ↑                  ↑
+   pf/milestone-1 ────┘   pf/milestone-2 ┘
+   (archived after)        (archived after)
+```
+
+- Each milestone gets a dedicated branch: `pf/milestone-N`.
+- Branches are created off the default branch at the start of Phase 1 (Brainstorm).
+- All work (brainstorm decisions, plan, code, docs) is committed to the milestone branch.
+- On milestone completion, the branch is squash-merged into the default branch.
+- After merge, the branch is renamed to `archive/pf/milestone-N` for future reference.
+
+### Commit Strategy
+
+| Phase | Commit behavior |
+|-------|----------------|
+| Brainstorm | Commit `project_memory/` updates after convergence |
+| Plan | Commit plan file + `project_memory/` updates |
+| Execute | Incremental commits after each logical step (prefixed with `pf:`) |
+| Review | Commit doc updates, then squash-merge everything to default branch |
+
+### Conflict Handling
+
+- Before starting a new milestone, merge the default branch into the milestone branch (not rebase).
+- If merge conflicts arise, output `BLOCKED` and let the user resolve.
+- Never rebase — it rewrites history and can cause divergence with remotes.
+
+### Rollback
+
+- **Undo an entire milestone**: `git revert <squash-merge-commit>` on the default branch.
+- **Inspect incremental history**: Check out `archive/pf/milestone-N` to see step-by-step commits.
+- **Undo a single step during execute**: `git revert HEAD` on the milestone branch.
+
+### State Files
+
+`project_memory/` files are **rewritten** (not merged) on each milestone completion. They represent current state. Historical state is preserved in the archived milestone branches and in the squash-merge commit messages.
 
 ---
 

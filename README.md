@@ -29,13 +29,13 @@ flowchart TD
     PLAN --> EXECUTE
 
     subgraph EXECUTE ["Phase 3: Execute"]
-        E1["Implement plan steps Write code + tests Commit after each unit Handle blockers"]
+        E1["Implement plan steps Write code + tests Incremental commits on pf/milestone-N Handle blockers"]
     end
 
     EXECUTE --> REVIEW
 
     subgraph REVIEW ["Phase 4: Review"]
-        R1["Reviewer agent verifies acceptance criteria Run test suite Check regressions Update lessons.md Propose new milestones"]
+        R1["Verify acceptance criteria Run test suite Check regressions Update lessons.md Doc-check + update docs Squash-merge to default branch Archive milestone branch"]
     end
 
     REVIEW --> DONE{Goal reached?}
@@ -169,6 +169,44 @@ Total iteration cap across all milestones: 30.
 | `SessionStart` | Reminds Claude to run the evolve skill's Observe & Extract procedure |
 | `PostToolUse` | Logs tool usage to `behavior_log.jsonl` for behavioral analysis (rolling window, last 100 entries) |
 | `Stop` | In continuous mode, re-invokes the workflow instead of exiting |
+
+## Version Control
+
+The plugin uses git to provide rollback, auditability, and milestone isolation. If your target project doesn't have a git repo, one is initialized automatically.
+
+### Branch Strategy
+
+Each milestone runs on a dedicated branch (`pf/milestone-1`, `pf/milestone-2`, etc.). On completion, the branch is squash-merged into the default branch and archived:
+
+```
+main ─── [squash M1] ─── [squash M2] ─── [squash M3] ─── ...
+  \          ↑               ↑               ↑
+   pf/m-1 ──┘    pf/m-2 ───┘    pf/m-3 ───┘
+   (archived)     (archived)     (archived)
+```
+
+### Commit Strategy
+
+| Phase | Commits |
+|-------|---------|
+| Brainstorm | `project_memory/` updates after convergence |
+| Plan | Plan file + `project_memory/` updates |
+| Execute | Incremental commits per step (prefixed `pf:`) |
+| Review | Doc updates, then squash-merge to default branch |
+
+### Rollback
+
+- **Undo entire milestone**: `git revert <squash-merge-commit>` on the default branch
+- **Inspect step-by-step history**: Check out `archive/pf/milestone-N`
+- **Undo single step**: `git revert HEAD` on the milestone branch during execute
+
+### Doc Updates
+
+Before squash-merging, the plugin checks if user-facing behavior changed and updates relevant docs (README.md, CLAUDE.md, plugin.json, SKILL.md files). This ensures documentation stays current with each milestone.
+
+### Conflict Handling
+
+If you make manual changes on the default branch between milestones, the plugin merges (not rebases) your changes. If conflicts arise, the plugin stops and asks you to resolve them.
 
 ## Memory Files
 

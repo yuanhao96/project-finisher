@@ -37,9 +37,14 @@ At the start of each phase, load only what that phase needs:
 
 ## Writing Memory
 
-- **Never overwrite** — append or update specific sections
 - **progress.md**: Update milestone status, append new proposed milestones
 - **current_context.md**: Replace entirely when starting a new milestone
 - **lessons.md**: Append new entries after each review
+
+### On Milestone Completion (squash-merge)
+
+When a milestone is squash-merged to the default branch, `project_memory/` files are **rewritten** (overwritten) on the default branch to reflect the current state. This avoids merge conflicts since every milestone branch touches these files. Historical state is preserved in:
+- The archived milestone branches (`archive/pf/milestone-N`)
+- The squash-merge commit messages (which include decisions and criteria)
 
 See references/file-formats.md for exact templates.

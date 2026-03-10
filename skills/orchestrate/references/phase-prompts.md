@@ -11,6 +11,19 @@ These are the internal prompt templates the orchestrator uses when entering each
 - `project_memory/progress.md` (completed milestones, current milestone, upcoming queue)
 - `project_memory/lessons.md` (all lessons from prior milestones)
 
+### Git Setup (before brainstorming)
+
+```
+GIT SETUP:
+1. Determine milestone number: count completed milestones in progress.md + 1.
+2. Check if pf/milestone-{N} branch already exists (session resume):
+   - If yes: git checkout pf/milestone-{N} (resume work on existing branch)
+   - If no: git checkout -b pf/milestone-{N} <default-branch> (create new branch)
+3. If default branch has new commits since last milestone:
+   git merge <default-branch>
+   If conflicts → BLOCKED signal and stop.
+```
+
 ### Multi-Round Brainstorming Process
 
 Each round invokes `/scientific-brainstorming`. The pushback from each round becomes the input for the next.
@@ -78,6 +91,12 @@ Let's resolve these remaining issues and confirm the approach is solid.
 - Remaining risks to watch for during Plan/Execute.
 - Any scope adjustments made.
 
+**Commit brainstorm decisions**:
+```
+git add project_memory/
+git commit -m "pf: brainstorm decisions for milestone {N}"
+```
+
 **Rules**:
 - Always run at least 2 rounds — never skip the pushback-resolution cycle.
 - Do NOT write code or create files.
@@ -135,6 +154,9 @@ OUTPUT:
 - Save full plan to docs/plans/YYYY-MM-DD-{milestone_slug}.md
 - Update current_context.md with the step checklist.
 - Set phase to "plan" in current_context.md.
+- Commit plan and memory updates:
+  git add docs/plans/ project_memory/
+  git commit -m "pf: plan for milestone {N}"
 
 RULES:
 - The plan must be self-contained and executable without clarification.
@@ -160,6 +182,9 @@ CONTEXT LOADED:
 - Key decisions: {key_decisions}
 - Known blockers: {blockers_if_any}
 
+GIT CHECK:
+- Verify you are on the pf/milestone-{N} branch. If not, check it out.
+
 EXECUTION PROCEDURE:
 For each unchecked step in the plan:
 1. Implement the change (code, config, docs).
@@ -169,7 +194,10 @@ For each unchecked step in the plan:
    a. Diagnose the failure.
    b. Attempt to fix (up to 2 attempts).
    c. If still failing: record as a blocker in current_context.md and move to the next non-dependent step.
-5. Commit completed work with a descriptive message.
+5. Stage and commit completed work incrementally:
+   git add <changed-files>
+   git commit -m "pf: step {N} — {description}"
+   These incremental commits are your safety net. If something breaks, roll back within the milestone.
 
 WHEN BLOCKED:
 - Record the blocker clearly: what failed, what was tried, what is needed.
@@ -237,8 +265,40 @@ REVIEW PROCEDURE:
    - If criteria NOT met:
      - Decide: re-enter Execute (for small gaps) or re-enter Plan (for significant gaps).
      - Note what remains and why.
+     - SKIP steps 6-8 (doc-check, squash, archive) — only run on completion.
 
-6. DECIDE NEXT ACTION:
+6. DOC-CHECK AND UPDATE (only if ALL criteria met):
+   - Run: git diff --name-only <default-branch>...HEAD
+   - Check if any user-facing behavior changed (new commands, APIs, features, workflows).
+   - If yes, update relevant docs:
+     - README.md: new features, changed usage, new commands
+     - CLAUDE.md: changed structure, new conventions, new workflows
+     - plugin.json: version bump if features added
+     - SKILL.md files: if skill behavior changed
+   - Commit: git commit -m "pf: docs — update for milestone {N}"
+
+7. SQUASH-MERGE TO DEFAULT BRANCH (only if ALL criteria met):
+   - git checkout <default-branch>
+   - git merge --squash pf/milestone-{N}
+   - Create squash commit with rich message:
+     ```
+     Milestone {N}: {milestone_name}
+
+     Objective: {milestone_objective}
+     Key decisions:
+     - {decision 1}
+     - {decision 2}
+     Acceptance criteria: all passed
+     Files changed: {summary}
+     ```
+   - Rewrite project_memory/ files to reflect current state (overwrite, not merge).
+   - git commit -m "pf: update project memory after milestone {N}"
+
+8. ARCHIVE MILESTONE BRANCH:
+   - git branch -m pf/milestone-{N} archive/pf/milestone-{N}
+   - The archived branch preserves full incremental commit history.
+
+9. DECIDE NEXT ACTION:
    - If the overall project goal is satisfied:
      - Generate a completion report.
      - STOP the loop.
@@ -253,6 +313,7 @@ COMPLETION REPORT FORMAT (when goal is satisfied):
 - Summary of each milestone.
 - Lessons learned (highlights).
 - Final project state.
+- Git log: list of squash-merge commits for all milestones.
 
 CONTINUOUS LOOP SIGNALS (output these when in continuous mode):
 - After generating the completion report (goal satisfied):
@@ -266,6 +327,8 @@ RULES:
 - Be honest about criteria. "Met" requires evidence, not assumption.
 - Do not skip regression checks.
 - Always write lessons, even if everything went smoothly.
+- Never skip the doc-check. Undocumented features create debt.
+- The squash-merge commit message is the primary audit trail — make it thorough.
 - Normal mode: If this milestone has failed review twice, STOP and ask the user.
 - Auto mode: If this milestone has failed review twice, re-scope it smaller. If it fails a third time, skip it and log the failure in lessons.md. If skipping, output <pf-signal>BLOCKED:Milestone "{milestone_name}" failed 3 times — requires user intervention</pf-signal>.
 ```
