@@ -118,6 +118,96 @@ Use the following template for the review report:
 
 ---
 
+## Comparative Review (Exploratory Mode)
+
+When invoked with two branches to compare, perform the review process on **both** branches and produce a side-by-side comparison. This mode is used when the orchestrator ran exploratory branching (two approaches executed in parallel).
+
+### Comparative Review Process
+
+1. **Review Branch A**: Check out `pf/milestone-N/a` via `git checkout pf/milestone-N/a`. Run the full 5-step review process (Steps 1-5 above). Record the results.
+2. **Review Branch B**: Check out `pf/milestone-N/b` via `git checkout pf/milestone-N/b`. Run the same 5-step review process. Record the results.
+
+   **Note**: `git checkout` for branch inspection is permitted in comparative mode. This is the sole exception to the "do not modify files" rule — checking out branches changes the working tree but does not alter any branch's content.
+3. **Collect comparison metrics** for both branches:
+   - Criteria met (count of PASS)
+   - Tests passing (count)
+   - Lines changed vs default branch (`git diff --stat <default-branch>...HEAD | tail -1`)
+   - New dependencies added (scan package.json, requirements.txt, go.mod, etc.)
+   - Regressions found (count)
+4. **Produce the comparative review report** using the format below.
+
+### Comparative Review Report Format
+
+```
+## Comparative Review: {milestone_name}
+
+**Reviewed**: {date}
+**Milestone**: {milestone_name}
+**Reviewer**: reviewer-agent (comparative mode)
+
+### Branch A: {approach_a_slug}
+
+| # | Criterion | Status | Evidence |
+|---|-----------|--------|----------|
+| 1 | {criterion text} | PASS / FAIL / PARTIAL | {evidence} |
+
+**Verdict**: {PASS / FAIL / PARTIAL}
+**Score**: {criteria_met}/{total_criteria}
+
+#### Test Suite (Branch A)
+
+| Metric | Count |
+|--------|-------|
+| Total tests | {n} |
+| Passing | {n} |
+| Failing | {n} |
+
+### Branch B: {approach_b_slug}
+
+| # | Criterion | Status | Evidence |
+|---|-----------|--------|----------|
+| 1 | {criterion text} | PASS / FAIL / PARTIAL | {evidence} |
+
+**Verdict**: {PASS / FAIL / PARTIAL}
+**Score**: {criteria_met}/{total_criteria}
+
+#### Test Suite (Branch B)
+
+| Metric | Count |
+|--------|-------|
+| Total tests | {n} |
+| Passing | {n} |
+| Failing | {n} |
+
+### Comparison
+
+| Dimension | Branch A | Branch B |
+|-----------|----------|----------|
+| Criteria met | {n}/{total} | {n}/{total} |
+| Tests passing | {n} | {n} |
+| Lines changed | {n} | {n} |
+| New dependencies | {n} | {n} |
+| Regressions | {n} | {n} |
+
+### Recommendation
+
+**Winner: Branch {A/B} ({approach_slug})**
+
+{One-paragraph rationale explaining why this branch is better. Reference specific
+criteria scores, code quality observations, and comparison metrics. If scores are
+tied, prefer the branch with fewer lines changed and fewer new dependencies.}
+```
+
+### Scoring Priority (for selecting winner)
+
+1. **Criteria met** — primary factor. More criteria PASS = better.
+2. **Test coverage** — secondary. More tests passing = better.
+3. **Lines changed** — tiebreaker. Fewer lines = simpler solution.
+4. **New dependencies** — tiebreaker. Fewer = less complexity.
+5. **Regressions** — disqualifier. Any regression is a strong negative signal.
+
+---
+
 ## Rules
 
 - **Do NOT fix issues** — report only. Your job is to evaluate, not to implement.
@@ -125,3 +215,4 @@ Use the following template for the review report:
 - **Run tests in read-only mode** — execute test commands but do not alter test files, fixtures, or configuration.
 - **Note flaky tests but don't count them as failures** — if a test fails intermittently and passes on re-run, mark it as flaky in the report but do not count it against the milestone verdict.
 - **Cite file paths and line numbers** — every PASS, FAIL, or PARTIAL judgment must include specific file paths and line numbers as evidence. Assertions without evidence are not acceptable.
+- **In comparative mode**, apply the same rigor to both branches. Do not favor one approach over another based on style or convention — judge by the scoring priority above.

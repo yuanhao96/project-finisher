@@ -206,6 +206,20 @@ Before squash-merging, the plugin checks if user-facing behavior changed and upd
 
 The squash-merge commit itself contains a structured message with the full decision audit trail, acceptance criteria, and files changed — queryable via `git log`.
 
+### Exploratory Branching (Auto Mode)
+
+When brainstorming identifies two equally viable approaches and auto mode is active, the plugin executes both in parallel on separate branches using isolated git worktrees:
+
+```
+pf/milestone-3
+  ├── pf/milestone-3/a  ← approach A (parallel)
+  └── pf/milestone-3/b  ← approach B (parallel)
+```
+
+The reviewer agent scores both branches, picks the winner based on criteria met, test coverage, code simplicity, and dependency count. The losing approach is archived for future reference. The squash commit message documents which approach won and why.
+
+This doubles API usage for that milestone but can produce better results for non-trivial architectural decisions.
+
 ### Conflict Handling
 
 If you make manual changes on the default branch between milestones, the plugin merges (not rebases) your changes. If conflicts arise, the plugin stops and asks you to resolve them.

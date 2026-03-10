@@ -84,6 +84,23 @@ This document contains the exact templates for all three memory files in `projec
 2. [ ] <step description>
 3. [ ] <step description>
 
+## Exploration Mode
+
+<!-- Only present when exploratory branching is active. Remove this section for normal milestones. -->
+
+**Active**: false
+**Approaches**:
+- **A** (<slug>): <one-sentence description>
+  - Branch: pf/milestone-N/a
+  - Plan: docs/plans/YYYY-MM-DD-milestone-name-approach-a.md
+  - Status: pending | executing | executed | reviewed
+- **B** (<slug>): <one-sentence description>
+  - Branch: pf/milestone-N/b
+  - Plan: docs/plans/YYYY-MM-DD-milestone-name-approach-b.md
+  - Status: pending | executing | executed | reviewed
+**Winner**: <!-- filled after review --> A | B | pending
+**Rationale**: <!-- filled after review --> <why this approach won>
+
 ## Notes
 
 <!-- Freeform notes, observations, or context that doesn't fit above. -->
