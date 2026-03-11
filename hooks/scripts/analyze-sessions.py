@@ -34,18 +34,6 @@ ACTION_RATIO_SHALLOW = 0.7
 EXPLORE_RATIO_DEEP = 0.7
 QUICK_INTERACTION_THRESHOLD = 5
 
-# --- Rubric weight tables ---
-PACING_WEIGHTS = {
-    "fast": {"test_coverage": 2, "lines_changed": 4, "new_dependencies": 3},
-    "deliberate": {"test_coverage": 4, "lines_changed": 2, "new_dependencies": 1},
-    "mixed": {"test_coverage": 3, "lines_changed": 3, "new_dependencies": 2},
-}
-DEPTH_WEIGHTS = {
-    "shallow": {"test_coverage": 2, "code_documentation": 1, "architectural_cleanliness": 2},
-    "deep": {"test_coverage": 4, "code_documentation": 4, "architectural_cleanliness": 4},
-    "mixed": {"test_coverage": 3, "code_documentation": 2, "architectural_cleanliness": 3},
-}
-
 # --- Templated signals ---
 PACING_SIGNALS = {
     "fast": "High tool density ({rate:.1f}/min avg). Sessions typically short and action-oriented.",
@@ -295,24 +283,6 @@ def compute_aggregate_signals(all_session_stats):
 
 
 # =========================================================
-# Compute rubric weights
-# =========================================================
-
-def compute_rubric_weights(pacing_style, depth_style):
-    """Derive reviewer rubric weights from pacing and depth."""
-    pw = PACING_WEIGHTS.get(pacing_style, PACING_WEIGHTS["mixed"])
-    dw = DEPTH_WEIGHTS.get(depth_style, DEPTH_WEIGHTS["mixed"])
-    return {
-        "criteria_met": 5,
-        "test_coverage": max(pw["test_coverage"], dw["test_coverage"]),
-        "lines_changed": pw["lines_changed"],
-        "new_dependencies": pw["new_dependencies"],
-        "code_documentation": dw["code_documentation"],
-        "architectural_cleanliness": dw["architectural_cleanliness"],
-    }
-
-
-# =========================================================
 # Derive workflow ordering summary
 # =========================================================
 
@@ -401,8 +371,6 @@ def generate_prefs_markdown(
     pacing_adapt = PACING_ADAPTATIONS[pacing_style]
     depth_adapt = DEPTH_ADAPTATIONS[depth_style]
 
-    rubric = compute_rubric_weights(pacing_style, depth_style)
-
     # Workflow adaptation
     if "brainstorm" in skipped_str:
         wf_adapt = "Skip brainstorm phase. Jump directly to execution with inline planning."
@@ -456,20 +424,6 @@ def generate_prefs_markdown(
 
     for row in session_rows:
         lines.append(row)
-
-    lines.append("")
-    lines.append("## Reviewer Rubric Weights")
-    lines.append("")
-    lines.append(f"_Derived from pacing={pacing_style}, depth={depth_style}._")
-    lines.append("")
-    lines.append("| Dimension | Weight | Derived From |")
-    lines.append("|-----------|--------|-------------|")
-    lines.append(f"| Criteria met | {rubric['criteria_met']} | Always primary |")
-    lines.append(f"| Test coverage | {rubric['test_coverage']} | max({pacing_style}\u2192{PACING_WEIGHTS[pacing_style]['test_coverage']}, {depth_style}\u2192{DEPTH_WEIGHTS[depth_style]['test_coverage']}) = {rubric['test_coverage']} |")
-    lines.append(f"| Lines changed (fewer = better) | {rubric['lines_changed']} | pacing: {pacing_style} \u2192 {rubric['lines_changed']} |")
-    lines.append(f"| New dependencies (fewer = better) | {rubric['new_dependencies']} | pacing: {pacing_style} \u2192 {rubric['new_dependencies']} |")
-    lines.append(f"| Code documentation | {rubric['code_documentation']} | depth: {depth_style} \u2192 {rubric['code_documentation']} |")
-    lines.append(f"| Architectural cleanliness | {rubric['architectural_cleanliness']} | depth: {depth_style} \u2192 {rubric['architectural_cleanliness']} |")
 
     lines.append("")
     ids_str = ",".join(sorted(all_session_ids))

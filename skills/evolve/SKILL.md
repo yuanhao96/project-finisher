@@ -129,19 +129,6 @@ _Total sessions observed: N_
 - **Confidence**: N
 - **Adaptation**: <what the orchestrator should do differently>
 
-## Reviewer Rubric Weights
-
-_Derived automatically from pacing, depth, and tool preferences. Used by the comparative reviewer when scoring exploratory branches._
-
-| Dimension | Weight | Derived From |
-|-----------|--------|-------------|
-| Criteria met | 5 | Always primary — not adjustable |
-| Test coverage | <N> | depth: deep → 4, shallow → 2, mixed → 3 |
-| Lines changed (fewer = better) | <N> | pacing: fast → 4, deliberate → 2, mixed → 3 |
-| New dependencies (fewer = better) | <N> | pacing: fast → 3, deliberate → 1, mixed → 2 |
-| Code documentation | <N> | depth: deep → 4, shallow → 1, mixed → 2 |
-| Architectural cleanliness | <N> | depth: deep → 4, shallow → 2, mixed → 3 |
-
 ## Session Log
 
 | Date | Pacing | Depth | Workflow | Notes |
