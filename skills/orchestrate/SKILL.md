@@ -346,8 +346,10 @@ When two branches were executed in parallel, use the comparative review flow ins
    - Archived branches preserve the full incremental commit history. In exploratory mode, both the winning and losing approaches are preserved for future reference.
 10. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, and tool usage patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
 11. **Decide next action**:
-    - If the overall project goal is satisfied: Generate a completion report summarizing all milestones, total work done, and final state. Stop the loop.
-    - If more milestones remain: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
+    - **If more milestones remain in the queue**: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
+    - **If no milestones remain — check goal satisfaction**: Re-read the goal file (the original, immutable goal). For each requirement in the goal file, check whether it has been demonstrably satisfied by the completed milestones. Only consider a requirement satisfied if there is concrete evidence (implemented code, passing tests, working feature).
+      - **Goal genuinely satisfied** (all requirements met): Generate a completion report summarizing all milestones, total work done, and final state. Output `<pf-signal>GOAL_COMPLETE</pf-signal>`. Stop the loop.
+      - **Goal NOT fully satisfied** (requirements remain): Identify the specific unmet requirements. Propose 1-3 new milestones targeting those gaps, following the milestone scoping rules. Write them to `progress.md` under "Upcoming Milestones". Set the first new milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm).
 
 **Rules**:
 - Be honest about acceptance criteria. A criterion is met only if it can be demonstrated, not merely if the code "looks right".
@@ -445,7 +447,7 @@ Signals are XML tags in the assistant's output: `<pf-signal>SIGNAL</pf-signal>`
 
 ### Rules
 
-- **Always output GOAL_COMPLETE** when the completion report is generated in Phase 4 and no more milestones remain. Do not let the session end without the signal — the hook needs it to know the loop is done.
+- **Always output GOAL_COMPLETE** when the completion report is generated in Phase 4 and the goal file's requirements are all genuinely satisfied. Do not let the session end without the signal — the hook needs it to know the loop is done. Note: milestones running out does NOT mean the goal is complete — if requirements remain unmet, propose new milestones instead.
 - **Output BLOCKED** as early as possible when a true blocker is identified. Do not waste iterations trying to work around something that requires user input.
 - **Do not output signals prematurely**. Completing a single milestone is NOT goal completion — only output GOAL_COMPLETE when the entire project goal is satisfied.
 - **Between milestones**, do not output any signal. The hook will re-invoke the workflow, which will read `progress.md` and continue with the next milestone naturally.
