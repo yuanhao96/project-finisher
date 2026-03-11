@@ -105,34 +105,6 @@ git commit -m "pf: brainstorm decisions for milestone {N}"
 
 ---
 
-### Exploratory Branching (after convergence, auto mode only)
-
-If two approaches remain with similar trade-offs and auto mode is active:
-
-```
-FORK DECISION:
-Two approaches with similar trade-offs identified. Activating exploratory branching.
-
-Approach A: "{approach_a_slug}" — {description}
-Approach B: "{approach_b_slug}" — {description}
-
-PROCEDURE:
-1. Log [AUTO-EXPLORE] decision in current_context.md
-2. Set Exploration Mode to active in current_context.md
-3. Create sub-branches:
-   git checkout pf/milestone-{N}
-   git checkout -b pf/milestone-{N}/a
-   git checkout pf/milestone-{N}
-   git checkout -b pf/milestone-{N}/b
-   git checkout pf/milestone-{N}
-4. Commit current_context.md update:
-   git add project_memory/
-   git commit -m "pf: activate exploratory branching for milestone {N}"
-5. Advance to Phase 2 in exploratory mode.
-```
-
----
-
 ## Entering Phase 2: Plan
 
 ### Context to Load
@@ -140,7 +112,7 @@ PROCEDURE:
 - `project_memory/progress.md` (milestone definitions and status)
 - `project_memory/current_context.md` (brainstorm decisions, key decisions, open questions)
 
-### Prompt Template (Normal Mode)
+### Prompt Template
 
 ```
 I am entering the PLAN phase for milestone: "{milestone_name}".
@@ -192,54 +164,6 @@ RULES:
 - Auto mode: If a step would normally require user input, make the most reasonable assumption, document it as [AUTO] in current_context.md, and proceed.
 ```
 
-### Prompt Template (Exploratory Mode)
-
-When `exploration_mode: true` in `current_context.md`:
-
-```
-I am entering the PLAN phase for milestone: "{milestone_name}" in EXPLORATORY MODE.
-
-Two approaches were identified during brainstorming:
-- Approach A ("{approach_a_slug}"): {description}
-- Approach B ("{approach_b_slug}"): {description}
-
-ACCEPTANCE CRITERIA (same for both):
-{acceptance_criteria_list}
-
-TASK: Create TWO separate, self-contained plans.
-
-For EACH approach, produce a plan with the same structure as a normal plan:
-1. FILES, 2. TASKS, 3. TESTS, 4. DEPENDENCY ORDER, 5. ROLLBACK NOTES
-
-Each plan must be fully self-contained — a subagent reading ONLY that plan file
-plus the acceptance criteria can execute it without any other context.
-
-OUTPUT — create and commit plans ONE BRANCH AT A TIME to avoid cross-contamination:
-
-Plan A:
-  git checkout pf/milestone-{N}/a
-  Create docs/plans/YYYY-MM-DD-{milestone_slug}-approach-a.md
-  git add docs/plans/
-  git commit -m "pf: plan for milestone {N} — approach A ({approach_a_slug})"
-  git checkout pf/milestone-{N}
-
-Plan B:
-  git checkout pf/milestone-{N}/b
-  Create docs/plans/YYYY-MM-DD-{milestone_slug}-approach-b.md
-  git add docs/plans/
-  git commit -m "pf: plan for milestone {N} — approach B ({approach_b_slug})"
-  git checkout pf/milestone-{N}
-
-IMPORTANT: Create each plan file ONLY while on its target branch.
-Do NOT create both files then commit — git add docs/plans/ would stage both.
-
-- Update current_context.md with both plan paths. Set approach statuses to "pending".
-
-RULES:
-- Both plans must target the SAME acceptance criteria — only the approach differs.
-- Both plans must be independently executable.
-```
-
 ---
 
 ## Entering Phase 3: Execute
@@ -247,7 +171,7 @@ RULES:
 ### Context to Load
 - `project_memory/current_context.md` (contains the plan, decisions, and step checklist)
 
-### Prompt Template (Normal Mode)
+### Prompt Template
 
 ```
 I am entering the EXECUTE phase for milestone: "{milestone_name}".
@@ -291,65 +215,6 @@ RULES:
 - Update current_context.md after each completed step.
 ```
 
-### Prompt Template (Exploratory Mode)
-
-When `exploration_mode: true` in `current_context.md`:
-
-```
-I am entering the EXECUTE phase for milestone: "{milestone_name}" in EXPLORATORY MODE.
-
-PARALLEL EXECUTION:
-Dispatch TWO Agent subagents simultaneously. Each executes one approach in isolation.
-
-AGENT A:
-  subagent_type: "general-purpose"
-  isolation: "worktree"
-  prompt: |
-    You are executing approach A ("{approach_a_slug}") for milestone "{milestone_name}".
-
-    BRANCH: pf/milestone-{N}/a
-    PLAN: Read docs/plans/YYYY-MM-DD-{milestone_slug}-approach-a.md
-    ACCEPTANCE CRITERIA:
-    {acceptance_criteria_list}
-
-    Instructions:
-    1. git checkout pf/milestone-{N}/a
-    2. Read the plan file listed above
-    3. Execute each step in order
-    4. After each step: git add <files> && git commit -m "pf: step N — description"
-    5. Run tests after each step
-    6. When done, report: completed steps, test results, blockers encountered
-
-AGENT B:
-  subagent_type: "general-purpose"
-  isolation: "worktree"
-  prompt: |
-    You are executing approach B ("{approach_b_slug}") for milestone "{milestone_name}".
-
-    BRANCH: pf/milestone-{N}/b
-    PLAN: Read docs/plans/YYYY-MM-DD-{milestone_slug}-approach-b.md
-    ACCEPTANCE CRITERIA:
-    {acceptance_criteria_list}
-
-    Instructions:
-    1. git checkout pf/milestone-{N}/b
-    2. Read the plan file listed above
-    3. Execute each step in order
-    4. After each step: git add <files> && git commit -m "pf: step N — description"
-    5. Run tests after each step
-    6. When done, report: completed steps, test results, blockers encountered
-
-AFTER BOTH COMPLETE:
-- Update current_context.md with execution summaries from both agents.
-- Set approach statuses to "reviewed".
-- If one agent failed/crashed, note the failure and proceed with the other.
-- Advance to Phase 4 (Review) in exploratory mode.
-
-RULES:
-- Do NOT execute the plans yourself — dispatch subagents.
-- The orchestrator coordinates; agents implement.
-```
-
 ---
 
 ## Entering Phase 4: Review
@@ -359,62 +224,7 @@ RULES:
 - `project_memory/current_context.md` (execution results, completed steps, blockers)
 - `project_memory/lessons.md` (prior lessons for comparison)
 
-### Prompt Template (Exploratory Mode)
-
-When `exploration_mode: true` in `current_context.md`, use this template INSTEAD of the normal one:
-
-```
-I am entering the REVIEW phase for milestone: "{milestone_name}" in EXPLORATORY MODE.
-
-CONTEXT LOADED:
-- Milestone acceptance criteria: {acceptance_criteria_list}
-- Approach A ("{approach_a_slug}"): branch pf/milestone-{N}/a — {execution_summary_a}
-- Approach B ("{approach_b_slug}"): branch pf/milestone-{N}/b — {execution_summary_b}
-- Prior lessons: {lessons_summary}
-
-COMPARATIVE REVIEW PROCEDURE:
-
-1. DISPATCH COMPARATIVE REVIEWER:
-   Read rubric weights from ~/.claude/project-finisher-data/workflow_preferences.md
-   (section "Reviewer Rubric Weights"). If absent, reviewer uses defaults.
-
-   Invoke the reviewer agent in comparative mode:
-   - Branch A: pf/milestone-{N}/a
-   - Branch B: pf/milestone-{N}/b
-   - Default branch: {default_branch_name}
-   - Acceptance criteria: {acceptance_criteria_list}
-   - Rubric weights: {weights from workflow_preferences.md or "use defaults"}
-
-2. SELECT WINNER based on comparative review report:
-   - Both PASS → pick higher score
-   - One PASS, one FAIL → pick the PASS
-   - Both PARTIAL → pick more criteria met
-   - Both FAIL → pick closer to passing, set exploration_mode to false, re-enter Plan single-branch
-
-3. RECORD DECISION:
-   - Update current_context.md: set Winner and Rationale in Exploration Mode section
-   - Log: [AUTO-EXPLORE] Selected approach {A/B} ("{slug}") — {rationale}
-
-4. MERGE WINNER TO BASE BRANCH:
-   git checkout pf/milestone-{N}
-   git merge pf/milestone-{N}/{a_or_b}
-
-5. CONTINUE WITH NORMAL REVIEW (steps 4-11):
-   - Skip steps 1-3 (tests/criteria/regressions already checked by comparative reviewer)
-   - Continue from step 4 (Update lessons.md) through step 11 (Decide next action)
-   - Include in squash commit message: "Chose approach {A/B} over {B/A} because {rationale}"
-
-6. ARCHIVE ALL BRANCHES (after squash-merge, step 9 of normal flow):
-   git branch -m pf/milestone-{N} archive/pf/milestone-{N}
-   git branch -m pf/milestone-{N}/a archive/pf/milestone-{N}/a
-   git branch -m pf/milestone-{N}/b archive/pf/milestone-{N}/b
-
-RULES:
-- Trust the comparative reviewer's scoring. Do not re-evaluate criteria.
-- Include exploration outcome in lessons.md: which approach won and why.
-```
-
-### Prompt Template (Normal Mode)
+### Prompt Template
 
 ```
 I am entering the REVIEW phase for milestone: "{milestone_name}".
