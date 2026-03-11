@@ -1,12 +1,12 @@
 ---
 name: evolve
-description: "Analyze user behavior patterns from tool usage logs and conversation signals, then update workflow_preferences.md to adapt project-finisher's pacing, depth, workflow ordering, and tool preferences. Run this skill at the end of any Claude Code session, or when the orchestrator starts a new milestone."
+description: "Analyze user behavior patterns from tool usage logs and conversation signals, then update workflow_preferences.md to adapt project-finisher's pacing, depth, workflow ordering, tool preferences, edit size, error recovery, and interaction patterns. Run this skill at the end of any Claude Code session, or when the orchestrator starts a new milestone."
 version: 0.1.0
 ---
 
 # Self-Evolution Skill
 
-The evolve skill observes how the user works with Claude Code and updates `workflow_preferences.md` so the orchestrator can adapt to their style. It learns four dimensions: pacing, depth, workflow ordering, and tool preferences.
+The evolve skill observes how the user works with Claude Code and updates `workflow_preferences.md` so the orchestrator can adapt to their style. It learns seven dimensions: pacing, depth, workflow ordering, tool preferences, edit size, error recovery, and interaction patterns.
 
 ---
 
@@ -74,6 +74,21 @@ Analyze the current conversation for these signals:
 - Note: Edit vs Write ratio
 - Note: Whether user preferred Bash for tasks tools could handle
 
+**Edit size signals** (from enriched log `edit_size` field):
+- Predominantly small edits (<50 chars net change) = incremental
+- Predominantly large edits (>500 chars) = large-rewrite
+- Mixed sizes = mixed
+
+**Error recovery signals** (from enriched log `bash_ok` field):
+- After a Bash failure, next tool is Bash again = retry pattern
+- After a Bash failure, next tool is Read/Grep/Glob = investigate pattern
+- After a Bash failure, next tool is Edit/Write = fix pattern
+
+**Interaction pattern signals** (from tool sequence):
+- High Read:Edit ratio (≥2:1) = cautious (look-before-edit)
+- Low Read:Edit ratio (≤0.5:1) = direct (edit with minimal pre-reading)
+- Between = mixed
+
 ### Step 2: Update Preferences
 
 Read the current `workflow_preferences.md` (create if it doesn't exist).
@@ -129,6 +144,27 @@ _Total sessions observed: N_
 - **Confidence**: N
 - **Adaptation**: <what the orchestrator should do differently>
 
+## Edit Size
+
+- **Style**: incremental | large-rewrite | mixed
+- **Confidence**: N
+- **Signals**: <summary of evidence>
+- **Adaptation**: <what the orchestrator should do differently>
+
+## Error Recovery
+
+- **Style**: retry | investigate | mixed
+- **Confidence**: N
+- **Signals**: <summary of evidence>
+- **Adaptation**: <what the orchestrator should do differently>
+
+## Interaction Patterns
+
+- **Style**: cautious | direct | mixed
+- **Confidence**: N
+- **Signals**: <summary of evidence>
+- **Adaptation**: <what the orchestrator should do differently>
+
 ## Session Log
 
 | Date | Pacing | Depth | Workflow | Notes |
@@ -174,6 +210,30 @@ When the orchestrator starts a new milestone, read `workflow_preferences.md` and
 | `prefer-agents` | Delegate research and exploration to Agent subagents. |
 | `prefer-edit` | Use Edit for file modifications. Avoid full Write unless creating new files. |
 | `prefer-write` | Use Write for file modifications when changes are extensive. |
+
+### Edit Size Adaptations
+
+| Preference | Orchestrator Behavior |
+|---|---|
+| `incremental` | Use Edit tool for targeted changes. Break large modifications into multiple small edits. Avoid full file rewrites. |
+| `large-rewrite` | Use Write tool for comprehensive changes. Batch related modifications into single operations. |
+| `mixed` | Default behavior — choose Edit vs Write based on change scope. |
+
+### Error Recovery Adaptations
+
+| Preference | Orchestrator Behavior |
+|---|---|
+| `retry` | On execution errors, try alternative approaches quickly. Minimize diagnostic steps. |
+| `investigate` | On execution errors, read error output carefully. Check related files before retrying. |
+| `mixed` | Default behavior — adapt error recovery to context. |
+
+### Interaction Pattern Adaptations
+
+| Preference | Orchestrator Behavior |
+|---|---|
+| `cautious` | Always read files before editing. Explore surrounding code for context. Include related file reads in plans. |
+| `direct` | Read only the target file before editing. Skip exploratory reads unless blocked. |
+| `mixed` | Default behavior — read as needed. |
 
 ### Reviewer Rubric Weight Derivation
 
