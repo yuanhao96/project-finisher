@@ -4,8 +4,9 @@ Fully deterministic session analyzer for project-finisher evolve system.
 
 Reads behavior_log.jsonl, identifies sessions not yet reflected in
 workflow_preferences.md, computes quantitative stats AND qualitative
-classifications (pacing, depth, workflow), and updates the preferences
-file completely — no LLM layer needed.
+classifications (pacing, depth, workflow, edit size, error recovery,
+interaction patterns), and updates the preferences file completely —
+no LLM layer needed.
 
 Exit codes:
   0 - analysis completed, workflow_preferences.md updated
@@ -34,6 +35,10 @@ ACTION_RATIO_SHALLOW = 0.7
 EXPLORE_RATIO_DEEP = 0.7
 QUICK_INTERACTION_THRESHOLD = 5
 
+# Edit size thresholds (net chars changed)
+EDIT_SIZE_SMALL = 50
+EDIT_SIZE_LARGE = 500
+
 # --- Templated signals ---
 PACING_SIGNALS = {
     "fast": "High tool density ({rate:.1f}/min avg). Sessions typically short and action-oriented.",
@@ -54,6 +59,36 @@ DEPTH_ADAPTATIONS = {
     "shallow": "Default to code-only responses during execution. Save explanations for brainstorming phases or when explicitly asked.",
     "deep": "Include rationale for decisions. Discuss alternatives considered. Reference prior lessons explicitly.",
     "mixed": "Default behavior — provide moderate explanations.",
+}
+EDIT_SIZE_SIGNALS = {
+    "incremental": "Predominantly small edits (median {median_size} chars). Prefers surgical, targeted changes.",
+    "large-rewrite": "Predominantly large edits (median {median_size} chars). Prefers comprehensive rewrites.",
+    "mixed": "Variable edit sizes (median {median_size} chars). Mix of small tweaks and larger changes.",
+}
+EDIT_SIZE_ADAPTATIONS = {
+    "incremental": "Use Edit tool for targeted changes. Break large modifications into multiple small edits. Avoid full file rewrites.",
+    "large-rewrite": "Use Write tool for comprehensive changes. Batch related modifications into single operations.",
+    "mixed": "Default behavior — choose Edit vs Write based on change scope.",
+}
+ERROR_RECOVERY_SIGNALS = {
+    "retry": "Tends to retry failed commands directly ({retry_pct:.0f}% retry rate after errors).",
+    "investigate": "Tends to investigate before retrying ({investigate_pct:.0f}% investigate rate after errors).",
+    "mixed": "Variable error recovery approach.",
+}
+ERROR_RECOVERY_ADAPTATIONS = {
+    "retry": "On execution errors, try alternative approaches quickly. Minimize diagnostic steps.",
+    "investigate": "On execution errors, read error output carefully. Check related files before retrying.",
+    "mixed": "Default behavior — adapt error recovery to context.",
+}
+INTERACTION_SIGNALS = {
+    "cautious": "High look-before-edit ratio ({read_edit_ratio:.1f}:1 Read:Edit). Explores thoroughly before modifying.",
+    "direct": "Low look-before-edit ratio ({read_edit_ratio:.1f}:1 Read:Edit). Edits with minimal pre-reading.",
+    "mixed": "Moderate look-before-edit ratio ({read_edit_ratio:.1f}:1 Read:Edit).",
+}
+INTERACTION_ADAPTATIONS = {
+    "cautious": "Always read files before editing. Explore surrounding code for context. Include related file reads in plans.",
+    "direct": "Read only the target file before editing. Skip exploratory reads unless blocked.",
+    "mixed": "Default behavior — read as needed.",
 }
 
 
@@ -95,8 +130,20 @@ def group_by_session(entries):
 def analyze_session(session_id, entries):
     """Compute stats for a single session."""
     tool_counts = Counter()
+    edit_sizes = []
+    bash_results = []  # list of booleans (True=success)
+
     for entry in entries:
-        tool_counts[entry.get("tool", "unknown")] += 1
+        tool = entry.get("tool", "unknown")
+        tool_counts[tool] += 1
+
+        # Collect edit sizes (from enriched log entries)
+        if tool in ("Edit", "Write") and "edit_size" in entry:
+            edit_sizes.append(abs(entry["edit_size"]))
+
+        # Collect bash results (from enriched log entries)
+        if tool == "Bash" and "bash_ok" in entry:
+            bash_results.append(entry["bash_ok"])
 
     timestamps = [e.get("ts", "") for e in entries if e.get("ts")]
     duration_min = None
@@ -111,6 +158,28 @@ def analyze_session(session_id, entries):
     date_str = timestamps[0][:10] if timestamps else ""
     top_tools = tool_counts.most_common(5)
     total_tools = sum(tool_counts.values())
+
+    # Compute tool pair frequencies (consecutive tool transitions)
+    tool_pairs = Counter()
+    tool_sequence = [e.get("tool", "unknown") for e in entries]
+    for i in range(len(tool_sequence) - 1):
+        pair = f"{tool_sequence[i]}→{tool_sequence[i+1]}"
+        tool_pairs[pair] += 1
+
+    # Error recovery: classify what happens after a bash failure
+    error_recovery = Counter()  # retry, investigate, fix
+    for i, entry in enumerate(entries):
+        if entry.get("tool") == "Bash" and entry.get("bash_ok") is False:
+            if i + 1 < len(entries):
+                next_tool = entries[i + 1].get("tool", "unknown")
+                if next_tool == "Bash":
+                    error_recovery["retry"] += 1
+                elif next_tool in ("Read", "Grep", "Glob"):
+                    error_recovery["investigate"] += 1
+                elif next_tool in ("Edit", "Write"):
+                    error_recovery["fix"] += 1
+                else:
+                    error_recovery["other"] += 1
 
     return {
         "session_id": session_id,
@@ -127,6 +196,11 @@ def analyze_session(session_id, entries):
         "grep_count": tool_counts.get("Grep", 0),
         "glob_count": tool_counts.get("Glob", 0),
         "skill_count": tool_counts.get("Skill", 0),
+        # New stats
+        "edit_sizes": edit_sizes,
+        "bash_results": bash_results,
+        "tool_pairs": dict(tool_pairs),
+        "error_recovery": dict(error_recovery),
     }
 
 
@@ -187,12 +261,71 @@ def classify_workflow(stats):
     return "mixed"
 
 
+def classify_edit_size(stats):
+    """Classify session edit size pattern as incremental/large-rewrite/mixed."""
+    sizes = stats.get("edit_sizes", [])
+    if not sizes:
+        return "mixed"  # no enriched data available
+
+    median = sorted(sizes)[len(sizes) // 2]
+
+    small_count = sum(1 for s in sizes if s < EDIT_SIZE_SMALL)
+    large_count = sum(1 for s in sizes if s >= EDIT_SIZE_LARGE)
+    total = len(sizes)
+
+    if small_count / total > 0.6:
+        return "incremental"
+    if large_count / total > 0.4:
+        return "large-rewrite"
+    return "mixed"
+
+
+def classify_error_recovery(stats):
+    """Classify error recovery behavior as retry/investigate/mixed."""
+    recovery = stats.get("error_recovery", {})
+    if not recovery:
+        return "mixed"  # no errors observed or no enriched data
+
+    total = sum(recovery.values())
+    if total == 0:
+        return "mixed"
+
+    retry = recovery.get("retry", 0)
+    investigate = recovery.get("investigate", 0) + recovery.get("fix", 0)
+
+    if retry / total > 0.6:
+        return "retry"
+    if investigate / total > 0.6:
+        return "investigate"
+    return "mixed"
+
+
+def classify_interaction_patterns(stats):
+    """Classify interaction patterns as cautious/direct/mixed."""
+    read_count = stats["read_count"]
+    edit_count = stats["edit_count"] + stats["write_count"]
+
+    if edit_count == 0:
+        return "mixed"  # no edits, can't classify
+
+    ratio = read_count / edit_count
+
+    if ratio >= 2.0:
+        return "cautious"
+    if ratio <= 0.5:
+        return "direct"
+    return "mixed"
+
+
 def classify_session(stats):
     """Full qualitative classification of a session."""
     return {
         "pacing": classify_pacing(stats),
         "depth": classify_depth(stats),
         "workflow": classify_workflow(stats),
+        "edit_size": classify_edit_size(stats),
+        "error_recovery": classify_error_recovery(stats),
+        "interaction": classify_interaction_patterns(stats),
     }
 
 
@@ -250,6 +383,21 @@ def parse_prefs(prefs_text):
         "confidence": int(tool_conf_match.group(1)) if tool_conf_match else 0,
     }
 
+    # New dimensions: edit_size, error_recovery, interaction
+    for dimension, key in [("Edit Size", "edit_size"), ("Error Recovery", "error_recovery"), ("Interaction Patterns", "interaction")]:
+        style_match = re.search(
+            rf'## {re.escape(dimension)}\s*\n.*?\*\*Style\*\*:\s*([\w-]+)',
+            prefs_text, re.DOTALL
+        )
+        conf_match = re.search(
+            rf'## {re.escape(dimension)}\s*\n.*?\*\*Confidence\*\*:\s*(\d+)',
+            prefs_text, re.DOTALL
+        )
+        result[key] = {
+            "style": style_match.group(1) if style_match else "mixed",
+            "confidence": int(conf_match.group(1)) if conf_match else 0,
+        }
+
     return result
 
 
@@ -272,6 +420,24 @@ def compute_aggregate_signals(all_session_stats):
     total_edits = sum(s["edit_count"] for s in all_session_stats)
     total_writes = sum(s["write_count"] for s in all_session_stats)
 
+    # New: aggregate edit sizes
+    all_edit_sizes = []
+    for s in all_session_stats:
+        all_edit_sizes.extend(s.get("edit_sizes", []))
+    median_size = sorted(all_edit_sizes)[len(all_edit_sizes) // 2] if all_edit_sizes else 0
+
+    # New: aggregate error recovery
+    total_recovery = Counter()
+    for s in all_session_stats:
+        for k, v in s.get("error_recovery", {}).items():
+            total_recovery[k] += v
+    recovery_total = sum(total_recovery.values())
+    retry_pct = (total_recovery.get("retry", 0) / recovery_total * 100) if recovery_total > 0 else 0
+    investigate_pct = ((total_recovery.get("investigate", 0) + total_recovery.get("fix", 0)) / recovery_total * 100) if recovery_total > 0 else 0
+
+    # New: aggregate interaction ratio
+    read_edit_ratio = total_edits and (sum(s["read_count"] for s in all_session_stats) / max(total_edits + total_writes, 1)) or 0
+
     return {
         "rate": avg_rate,
         "action_pct": action_pct,
@@ -279,6 +445,10 @@ def compute_aggregate_signals(all_session_stats):
         "total_agents": total_agents,
         "total_edits": total_edits,
         "total_writes": total_writes,
+        "median_size": median_size,
+        "retry_pct": retry_pct,
+        "investigate_pct": investigate_pct,
+        "read_edit_ratio": read_edit_ratio,
     }
 
 
@@ -359,6 +529,9 @@ def generate_prefs_markdown(
     all_tool_counts, total_sessions,
     session_rows, all_session_ids,
     aggregate_signals,
+    edit_size_style, edit_size_conf,
+    error_recovery_style, error_recovery_conf,
+    interaction_style, interaction_conf,
 ):
     """Generate the complete workflow_preferences.md content."""
     today = datetime.now().strftime("%Y-%m-%d")
@@ -370,6 +543,13 @@ def generate_prefs_markdown(
     depth_sig = DEPTH_SIGNALS[depth_style].format(**aggregate_signals)
     pacing_adapt = PACING_ADAPTATIONS[pacing_style]
     depth_adapt = DEPTH_ADAPTATIONS[depth_style]
+
+    edit_size_sig = EDIT_SIZE_SIGNALS[edit_size_style].format(**aggregate_signals)
+    edit_size_adapt = EDIT_SIZE_ADAPTATIONS[edit_size_style]
+    error_recovery_sig = ERROR_RECOVERY_SIGNALS[error_recovery_style].format(**aggregate_signals)
+    error_recovery_adapt = ERROR_RECOVERY_ADAPTATIONS[error_recovery_style]
+    interaction_sig = INTERACTION_SIGNALS[interaction_style].format(**aggregate_signals)
+    interaction_adapt = INTERACTION_ADAPTATIONS[interaction_style]
 
     # Workflow adaptation
     if "brainstorm" in skipped_str:
@@ -416,6 +596,27 @@ def generate_prefs_markdown(
         if agent_pref == "prefer-direct"
         else f"- **Adaptation**: Delegate research to Agent subagents. Use direct tools for targeted operations.",
         "",
+        "## Edit Size",
+        "",
+        f"- **Style**: {edit_size_style}",
+        f"- **Confidence**: {edit_size_conf}",
+        f"- **Signals**: {edit_size_sig}",
+        f"- **Adaptation**: {edit_size_adapt}",
+        "",
+        "## Error Recovery",
+        "",
+        f"- **Style**: {error_recovery_style}",
+        f"- **Confidence**: {error_recovery_conf}",
+        f"- **Signals**: {error_recovery_sig}",
+        f"- **Adaptation**: {error_recovery_adapt}",
+        "",
+        "## Interaction Patterns",
+        "",
+        f"- **Style**: {interaction_style}",
+        f"- **Confidence**: {interaction_conf}",
+        f"- **Signals**: {interaction_sig}",
+        f"- **Adaptation**: {interaction_adapt}",
+        "",
         "## Session Log",
         "",
         "| Date | Pacing | Depth | Workflow | Notes |",
@@ -424,6 +625,31 @@ def generate_prefs_markdown(
 
     for row in session_rows:
         lines.append(row)
+
+    lines.append("")
+
+    # Reviewer rubric weights
+    lines.extend([
+        "## Reviewer Rubric Weights",
+        "",
+        f"_Derived from pacing={pacing_style}, depth={depth_style}._",
+        "",
+        "| Dimension | Weight | Derived From |",
+        "|-----------|--------|-------------|",
+        "| Criteria met | 5 | Always primary |",
+    ])
+
+    # Compute rubric weights from pacing and depth
+    pacing_weights = {"fast": {"test": 2, "lines": 4, "deps": 3}, "deliberate": {"test": 4, "lines": 2, "deps": 1}, "mixed": {"test": 3, "lines": 3, "deps": 2}}
+    depth_weights = {"shallow": {"test": 2, "docs": 1, "arch": 2}, "deep": {"test": 4, "docs": 4, "arch": 4}, "mixed": {"test": 3, "docs": 2, "arch": 3}}
+    pw = pacing_weights.get(pacing_style, pacing_weights["mixed"])
+    dw = depth_weights.get(depth_style, depth_weights["mixed"])
+    test_w = max(pw["test"], dw["test"])
+    lines.append(f"| Test coverage | {test_w} | max(fast→{pw['test']}, {depth_style}→{dw['test']}) = {test_w} |")
+    lines.append(f"| Lines changed (fewer = better) | {pw['lines']} | pacing: {pacing_style} → {pw['lines']} |")
+    lines.append(f"| New dependencies (fewer = better) | {pw['deps']} | pacing: {pacing_style} → {pw['deps']} |")
+    lines.append(f"| Code documentation | {dw['docs']} | depth: {depth_style} → {dw['docs']} |")
+    lines.append(f"| Architectural cleanliness | {dw['arch']} | depth: {depth_style} → {dw['arch']} |")
 
     lines.append("")
     ids_str = ",".join(sorted(all_session_ids))
@@ -494,6 +720,9 @@ def main():
         "depth": {"style": "mixed", "confidence": 0},
         "workflow": {"style": "mixed", "confidence": 0},
         "tools": {"agent_pref": "mixed", "edit_pref": "mixed", "confidence": 0},
+        "edit_size": {"style": "mixed", "confidence": 0},
+        "error_recovery": {"style": "mixed", "confidence": 0},
+        "interaction": {"style": "mixed", "confidence": 0},
     }
 
     # Apply confidence counter for each new session
@@ -501,10 +730,19 @@ def main():
     pacing_conf = current_prefs["pacing"]["confidence"]
     depth_style = current_prefs["depth"]["style"]
     depth_conf = current_prefs["depth"]["confidence"]
+    edit_size_style = current_prefs["edit_size"]["style"]
+    edit_size_conf = current_prefs["edit_size"]["confidence"]
+    error_recovery_style = current_prefs["error_recovery"]["style"]
+    error_recovery_conf = current_prefs["error_recovery"]["confidence"]
+    interaction_style = current_prefs["interaction"]["style"]
+    interaction_conf = current_prefs["interaction"]["confidence"]
 
     for cl in new_classifications:
         pacing_style, pacing_conf = update_confidence(pacing_style, pacing_conf, cl["pacing"])
         depth_style, depth_conf = update_confidence(depth_style, depth_conf, cl["depth"])
+        edit_size_style, edit_size_conf = update_confidence(edit_size_style, edit_size_conf, cl["edit_size"])
+        error_recovery_style, error_recovery_conf = update_confidence(error_recovery_style, error_recovery_conf, cl["error_recovery"])
+        interaction_style, interaction_conf = update_confidence(interaction_style, interaction_conf, cl["interaction"])
 
     # Compute cumulative tool counts
     all_tool_counts = Counter()
@@ -550,8 +788,6 @@ def main():
     wf_conf = max(wf_counts.values()) if wf_counts else 0
 
     # Tool preferences
-    # We need stats for all sessions, but we only have detailed stats for
-    # sessions in the current log. Use cumulative tool counts as proxy.
     agent_pref, edit_pref = derive_tool_prefs(new_stats)
     # Override with cumulative if we have data
     total_agents_cum = all_tool_counts.get("Agent", 0)
@@ -574,7 +810,6 @@ def main():
     tool_conf = current_prefs["tools"]["confidence"] + len(new_stats)
 
     # Aggregate signals for templated text
-    # Use new sessions for rate calculation (we have timestamps)
     agg = compute_aggregate_signals(new_stats)
 
     # Generate full preferences markdown
@@ -586,6 +821,9 @@ def main():
         all_tool_counts, total_sessions,
         all_rows, all_session_ids,
         agg,
+        edit_size_style, edit_size_conf,
+        error_recovery_style, error_recovery_conf,
+        interaction_style, interaction_conf,
     )
 
     PREFS_FILE.write_text(prefs_md)
