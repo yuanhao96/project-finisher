@@ -20,13 +20,7 @@ When the orchestrator is invoked, execute the following steps in order:
    - **If no git repo exists**: Run `git init`. Create a `.gitignore` with at minimum: `.claude/`, `.DS_Store`, `__pycache__/`, `*.pyc`, `node_modules/`, `.env`. Make an initial commit with the existing project files (or an empty initial commit if the project is new).
    - **If a git repo exists**: Record the default branch name (e.g., `main`, `master`) for later use. Ensure the working tree is clean — if there are uncommitted changes, warn the user and suggest committing or stashing before proceeding.
 4. **Check for existing memory** — Look for a `project_memory/` directory at the project root.
-   - **If `project_memory/` exists (resume)**: Read `progress.md` to determine the current milestone and its phase. Read `current_context.md` for active working state.
-     - **If `exploration_mode: true`** in `current_context.md`: Check approach statuses to determine resume point:
-       - Both `pending` → resume at Phase 2 (Plan) in exploratory mode.
-       - One or both `executing` → check git log on each sub-branch to see progress. Re-dispatch only the incomplete agent in Phase 3.
-       - Both `executed` → resume at Phase 4 (Review) in exploratory mode.
-       - `Winner` is set → resume at the merge step of Phase 4 (Review).
-     - **Otherwise**: Enter the appropriate phase for the current milestone normally.
+   - **If `project_memory/` exists (resume)**: Read `progress.md` to determine the current milestone and its phase. Read `current_context.md` for active working state. Enter the appropriate phase for the current milestone.
    - **If `project_memory/` does not exist (initialize)**: Create the `project_memory/` directory. Initialize `progress.md`, `current_context.md`, and `lessons.md` using the templates from the memory skill. Extract the goal summary from the goal file into `progress.md`. Propose the first 1-3 milestones based on the goal. Set the first milestone as current and enter the Brainstorm phase.
 5. **Identify current milestone and phase** — From `progress.md`, read the current milestone name and phase (brainstorm, plan, execute, or review).
 6. **Enter the phase** — Jump to the matching phase in the iteration loop below. Load only the context that phase requires (see the memory skill's reading table).
@@ -95,36 +89,6 @@ Each milestone progresses through four phases in order. After the Review phase c
   3. If options are genuinely equivalent, pick the simplest one.
   4. Log the decision as `[AUTO]` in `current_context.md` and continue to the next brainstorming round with the chosen approach.
 
-#### Exploratory Branching (Auto Mode Only)
-
-After brainstorming converges, if **all** of the following are true, activate exploratory mode instead of picking a single approach:
-
-1. **Two viable approaches remain** — brainstorming produced two candidate approaches with genuinely similar trade-offs (neither is clearly superior).
-2. **Auto mode is active** — in normal mode, ask the user to choose instead.
-3. **Non-trivial milestone** — the milestone touches 3+ files and involves real implementation choices (not config-only or documentation changes).
-
-**Do NOT explore when**:
-- One approach is clearly recommended by brainstorming.
-- The approaches differ only cosmetically (naming, variable ordering, etc.).
-- The milestone is simple enough that exploration wastes resources.
-
-**If more than two approaches remain**: Use the auto-mode decision logic to eliminate all but two before activating exploratory branching. Pick the top two by trade-off profile.
-
-**Fork procedure**:
-
-1. Log `[AUTO-EXPLORE] Running dual execution for milestone N. Two approaches with similar trade-offs: "{approach_a_slug}" vs "{approach_b_slug}".` in `current_context.md` under "Key Decisions".
-2. Set the "Exploration Mode" section in `current_context.md` to active. Record both approaches with their slugs, descriptions, and trade-offs.
-3. Create sub-branches off the milestone branch:
-   ```
-   git checkout pf/milestone-N
-   git checkout -b pf/milestone-N/a
-   git checkout pf/milestone-N
-   git checkout -b pf/milestone-N/b
-   git checkout pf/milestone-N
-   ```
-4. Commit the `current_context.md` update to the base milestone branch.
-5. Advance to Phase 2 in exploratory mode.
-
 ---
 
 ### Phase 2: Plan
@@ -133,7 +97,7 @@ After brainstorming converges, if **all** of the following are true, activate ex
 
 **Context to load**: goal file + `progress.md` + `current_context.md`
 
-**Procedure (normal mode)**:
+**Procedure**:
 
 1. Based on the brainstorm decisions in `current_context.md`, create a step-by-step implementation plan covering:
    - **Files to create or modify** — List every file path with a brief description of the change.
@@ -147,34 +111,10 @@ After brainstorming converges, if **all** of the following are true, activate ex
 4. Validate the plan: every step must be actionable without asking the user for clarification. If any step requires input, stop and ask.
 5. Advance to Phase 3 (Execute).
 
-**Procedure (exploratory mode)** — when `exploration_mode: true` in `current_context.md`:
-
-1. Create and commit plans **one branch at a time** to avoid cross-contamination:
-
-   **Plan A**:
-   - Check out branch A: `git checkout pf/milestone-N/a`
-   - Create Plan A at `docs/plans/YYYY-MM-DD-milestone-name-approach-a.md`
-   - The plan must be **fully self-contained** — a subagent reading only that plan file plus the acceptance criteria can execute it without any other context.
-   - Stage and commit: `git add docs/plans/ && git commit -m "pf: plan for milestone N — approach A ({slug})"`
-   - Return to base: `git checkout pf/milestone-N`
-
-   **Plan B**:
-   - Check out branch B: `git checkout pf/milestone-N/b`
-   - Create Plan B at `docs/plans/YYYY-MM-DD-milestone-name-approach-b.md`
-   - Same self-contained requirement as Plan A.
-   - Stage and commit: `git add docs/plans/ && git commit -m "pf: plan for milestone N — approach B ({slug})"`
-   - Return to base: `git checkout pf/milestone-N`
-
-2. Update `current_context.md` with both plan paths and set approach statuses to `pending`.
-3. Advance to Phase 3 (Execute) in exploratory mode.
-
-   **Important**: Create each plan file only while on its target branch. Do NOT create both files on one branch — `git add docs/plans/` would stage both, contaminating the branch.
-
 **Rules**:
-- The plan must be self-contained. Another agent reading only `current_context.md` (or, in exploratory mode, only the plan file) should be able to execute it.
+- The plan must be self-contained. Another agent reading only `current_context.md` should be able to execute it.
 - Each task should touch a small, well-defined scope. If a single task affects more than 5 files, split it.
 - Include rollback notes for any risky steps (e.g., database migrations, dependency upgrades).
-- In exploratory mode, both plans must target the same acceptance criteria — only the approach differs.
 
 ---
 
@@ -184,7 +124,7 @@ After brainstorming converges, if **all** of the following are true, activate ex
 
 **Context to load**: `current_context.md` (contains the plan reference and all decisions)
 
-**Procedure (normal mode)**:
+**Procedure**:
 
 1. Ensure you are on the `pf/milestone-N` branch. If not, check it out.
 2. Work through the steps in `current_context.md` "Plan Reference > Steps" in order.
@@ -200,48 +140,11 @@ After brainstorming converges, if **all** of the following are true, activate ex
    - If all remaining steps depend on the blocker, stop and ask the user.
 5. After all steps are complete (or all non-blocked steps are done), advance to Phase 4 (Review).
 
-**Procedure (exploratory mode)** — when `exploration_mode: true` in `current_context.md`:
-
-1. Dispatch **two Agent subagents in parallel**, each executing one approach in an isolated worktree:
-
-   **Agent A**:
-   ```
-   Agent tool call:
-     subagent_type: "general-purpose"
-     isolation: "worktree"
-     prompt: |
-       You are executing approach A ("{approach_a_slug}") for milestone {N}.
-
-       BRANCH: pf/milestone-N/a
-       PLAN: Read docs/plans/YYYY-MM-DD-milestone-name-approach-a.md
-       ACCEPTANCE CRITERIA: {list from progress.md}
-
-       Instructions:
-       1. Check out branch pf/milestone-N/a
-       2. Read the plan file
-       3. Execute each step in order
-       4. Commit incrementally: git add <files> && git commit -m "pf: step N — description"
-       5. Run tests after each step
-       6. Report: list of completed steps, test results, any blockers encountered
-   ```
-
-   **Agent B**: Same structure, targeting `pf/milestone-N/b` and approach B's plan.
-
-2. Both agents run in parallel. Wait for both to complete.
-3. Update `current_context.md`:
-   - Set approach A status to `executed` (or note blockers).
-   - Set approach B status to `executed` (or note blockers).
-   - Record execution summaries from both agents.
-   - Status becomes `reviewed` only after the comparative reviewer completes in Phase 4.
-4. If one agent fails/crashes, proceed with the other's result. Log the failure in `current_context.md`.
-5. Advance to Phase 4 (Review) in exploratory mode.
-
 **Rules**:
 - Follow the plan. Do not add unplanned work unless it is strictly necessary to complete a planned step.
 - Keep commits atomic and well-described. Prefix commit messages with `pf:` for traceability.
 - Do not refactor unrelated code during execution.
 - If a planned step turns out to be unnecessary, skip it and note why in `current_context.md`.
-- In exploratory mode, do NOT execute the plans yourself — dispatch subagents. The orchestrator coordinates; agents implement.
 
 ---
 
@@ -251,49 +154,7 @@ After brainstorming converges, if **all** of the following are true, activate ex
 
 **Context to load**: `progress.md` + `current_context.md` + `lessons.md`
 
-**Procedure (exploratory mode)** — when `exploration_mode: true` in `current_context.md`:
-
-When two branches were executed in parallel, use the comparative review flow instead of the normal review:
-
-1. **Dispatch the reviewer agent in comparative mode**:
-   - Read the "Reviewer Rubric Weights" section from `~/.claude/project-finisher-data/workflow_preferences.md`. If it exists, include the weights in the reviewer prompt. If it doesn't exist, the reviewer uses default weights.
-   ```
-   Agent tool call:
-     subagent_type: "project-finisher:reviewer"
-     prompt: |
-       Perform a COMPARATIVE REVIEW of two approaches for milestone "{milestone_name}".
-
-       Branch A: pf/milestone-N/a ("{approach_a_slug}")
-       Branch B: pf/milestone-N/b ("{approach_b_slug}")
-       Default branch: {default_branch_name}
-       Acceptance criteria: {list from progress.md}
-
-       Rubric weights (from user preferences):
-       - Criteria met: 5
-       - Test coverage: {weight}
-       - Lines changed: {weight}
-       - New dependencies: {weight}
-       - Code documentation: {weight}
-       - Architectural cleanliness: {weight}
-
-       Check out each branch in turn, run the full review process on each,
-       compute weighted scores, then produce a comparative review report.
-       See the "Comparative Review" section of your instructions.
-   ```
-2. **Select winner** based on the reviewer's comparative report:
-   - Both PASS → pick the one with higher reviewer score.
-   - One PASS, one FAIL → pick the PASS.
-   - Both PARTIAL → pick the one with more criteria met.
-   - Both FAIL → continue with the branch that has the higher `criteria_met` count (if tied, prefer fewer lines changed). Archive the other. Set `exploration_mode: false`. Re-enter Phase 2 (Plan) to create a new plan addressing the gaps identified by the reviewer — do not re-execute the old plan.
-3. **Record the decision**: Update `current_context.md` Exploration Mode section — set Winner and Rationale.
-4. **Merge winner to base milestone branch**:
-   ```
-   git checkout pf/milestone-N
-   git merge pf/milestone-N/a   (or /b, whichever won)
-   ```
-5. Continue with the normal review procedure below (steps 1-11), starting from step 4 (Update lessons.md) — tests and criteria were already checked by the comparative reviewer.
-
-**Procedure (normal mode)**:
+**Procedure**:
 
 1. **Run tests**: Execute the project's test suite (or the tests defined in the plan). Record pass/fail results.
 2. **Check acceptance criteria**: For each criterion in the current milestone's acceptance criteria (from `progress.md`), verify whether it is met. Check the box if met; note why if not.
@@ -335,15 +196,7 @@ When two branches were executed in parallel, use the comparative review flow ins
    - If it does not exist, create it.
    - Each entry includes: milestone name, date, objective, key changes (from plan steps), and key decisions.
    - Commit: `pf: changelog — milestone N`.
-9. **Archive milestone branches**:
-   - **Normal mode**: Rename the milestone branch: `git branch -m pf/milestone-N archive/pf/milestone-N`.
-   - **Exploratory mode**: Archive all branches:
-     ```
-     git branch -m pf/milestone-N archive/pf/milestone-N
-     git branch -m pf/milestone-N/a archive/pf/milestone-N/a
-     git branch -m pf/milestone-N/b archive/pf/milestone-N/b
-     ```
-   - Archived branches preserve the full incremental commit history. In exploratory mode, both the winning and losing approaches are preserved for future reference.
+9. **Archive milestone branch**: Rename the milestone branch: `git branch -m pf/milestone-N archive/pf/milestone-N`. Archived branches preserve the full incremental commit history.
 10. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, and tool usage patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
 11. **Decide next action**:
     - **If more milestones remain in the queue**: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
@@ -461,7 +314,6 @@ Project-finisher uses git for rollback, auditability, and milestone isolation. T
 
 ### Branch Model
 
-**Normal mode** — single branch per milestone:
 ```
 <default-branch> ─── squash merge ─── squash merge ─── ...
   \                    ↑                  ↑
@@ -469,22 +321,11 @@ Project-finisher uses git for rollback, auditability, and milestone isolation. T
    (archived after)        (archived after)
 ```
 
-**Exploratory mode** — dual branches when brainstorm identifies a fork:
-```
-<default-branch> ─── squash merge (winner) ─── ...
-  \                    ↑
-   pf/milestone-3 ────┤
-     ├── /a (approach A) ← executed in parallel
-     └── /b (approach B) ← executed in parallel
-   (all three archived after)
-```
-
 - Each milestone gets a dedicated branch: `pf/milestone-N`.
 - Branches are created off the default branch at the start of Phase 1 (Brainstorm).
 - All work (brainstorm decisions, plan, code, docs) is committed to the milestone branch.
-- In exploratory mode, two sub-branches (`/a` and `/b`) are created for parallel execution. The winner is merged back to the base milestone branch before squash-merging.
 - On milestone completion, the branch is squash-merged into the default branch.
-- After merge, all branches are renamed to `archive/pf/milestone-N[/a|/b]` for future reference.
+- After merge, branches are renamed to `archive/pf/milestone-N` for future reference.
 
 ### Commit Strategy
 
