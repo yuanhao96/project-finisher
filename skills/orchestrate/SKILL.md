@@ -15,7 +15,7 @@ The orchestrator is the central brain of project-finisher. It drives the iterati
 When the orchestrator is invoked, execute the following steps in order:
 
 1. **Read the goal file** — Load the user-provided goal file (passed via `--goal`). This is the immutable source of truth for the project.
-2. **Load workflow preferences** — Read `~/.claude/project-finisher-data/workflow_preferences.md` if it exists. This file contains learned user behavior patterns (pacing, depth, workflow ordering, tool preferences) that adapt how the orchestrator operates. Apply the adaptations described in the evolve skill's "Apply Procedure" throughout this session. If the file does not exist, use default behavior (no adaptations).
+2. **Load workflow preferences** — Read `~/.claude/project-finisher-data/workflow_preferences.md` if it exists. This file contains learned user behavior patterns (pacing, depth, workflow ordering, tool preferences, edit size, error recovery, interaction patterns) that adapt how the orchestrator operates. Apply the adaptations described in the evolve skill's "Apply Procedure" throughout this session. If the file does not exist, use default behavior (no adaptations).
 3. **Initialize git repository** — Check if the target project has a git repository (`git rev-parse --git-dir`).
    - **If no git repo exists**: Run `git init`. Create a `.gitignore` with at minimum: `.claude/`, `.DS_Store`, `__pycache__/`, `*.pyc`, `node_modules/`, `.env`. Make an initial commit with the existing project files (or an empty initial commit if the project is new).
    - **If a git repo exists**: Record the default branch name (e.g., `main`, `master`) for later use. Ensure the working tree is clean — if there are uncommitted changes, warn the user and suggest committing or stashing before proceeding.
@@ -135,7 +135,10 @@ Each milestone progresses through four phases in order. After the Review phase c
    - **Commit incrementally**: After each logical unit of work, create a commit on the milestone branch with a descriptive message (e.g., `pf: step 3 — add authentication middleware`). These incremental commits provide a safety net during execution. If something breaks, you can roll back to the last good commit within the milestone.
 4. If blocked on a step:
    - Record the blocker in `current_context.md` under "Blockers".
-   - Attempt to resolve it (search for solutions, try alternative approaches).
+   - Attempt to resolve it using the error-recovery preference from `workflow_preferences.md`:
+     - **retry**: Try alternative approaches quickly, minimize diagnostic steps.
+     - **investigate**: Read error output carefully, check related files before retrying.
+     - **mixed**: Adapt to the specific error context.
    - If the blocker cannot be resolved autonomously, note it and continue with non-dependent steps.
    - If all remaining steps depend on the blocker, stop and ask the user.
 5. After all steps are complete (or all non-blocked steps are done), advance to Phase 4 (Review).
@@ -145,6 +148,13 @@ Each milestone progresses through four phases in order. After the Review phase c
 - Keep commits atomic and well-described. Prefix commit messages with `pf:` for traceability.
 - Do not refactor unrelated code during execution.
 - If a planned step turns out to be unnecessary, skip it and note why in `current_context.md`.
+- Apply the edit-size preference from `workflow_preferences.md`:
+  - **incremental**: Use Edit for targeted changes. Break large modifications into multiple small edits.
+  - **large-rewrite**: Use Write for comprehensive changes. Batch related modifications.
+  - **mixed**: Choose Edit vs Write based on change scope.
+- Apply the interaction-pattern preference:
+  - **cautious**: Always read files before editing. Explore surrounding code for context.
+  - **direct**: Read only the target file before editing.
 
 ---
 
@@ -197,7 +207,7 @@ Each milestone progresses through four phases in order. After the Review phase c
    - Each entry includes: milestone name, date, objective, key changes (from plan steps), and key decisions.
    - Commit: `pf: changelog — milestone N`.
 9. **Archive milestone branch**: Rename the milestone branch: `git branch -m pf/milestone-N archive/pf/milestone-N`. Archived branches preserve the full incremental commit history.
-10. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, and tool usage patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
+10. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, tool usage patterns, edit size patterns, error recovery behavior, and interaction patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
 11. **Decide next action**:
     - **If more milestones remain in the queue**: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
     - **If no milestones remain — check goal satisfaction**: Re-read the goal file (the original, immutable goal). For each requirement in the goal file, check whether it has been demonstrably satisfied by the completed milestones. Only consider a requirement satisfied if there is concrete evidence (implemented code, passing tests, working feature).
