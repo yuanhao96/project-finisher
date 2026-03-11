@@ -126,7 +126,7 @@ Add `--continuous` (requires `--auto`) to keep the workflow running across sessi
 /finish --goal path/to/goal.md --auto --continuous
 ```
 
-When Claude's session ends, a Stop hook automatically re-invokes the workflow with a phase-appropriate prompt. The loop continues until all milestones are complete, a blocker is hit, or iteration budgets are exhausted.
+When Claude's session ends, a Stop hook automatically re-invokes the workflow with a phase-appropriate prompt. The loop continues until the goal is genuinely satisfied, a blocker is hit, or iteration budgets are exhausted. When all current milestones are completed but the goal has unmet requirements, new milestones are proposed automatically.
 
 Each phase has a default iteration budget:
 
