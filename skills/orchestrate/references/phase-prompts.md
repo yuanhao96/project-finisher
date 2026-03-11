@@ -375,10 +375,15 @@ CONTEXT LOADED:
 COMPARATIVE REVIEW PROCEDURE:
 
 1. DISPATCH COMPARATIVE REVIEWER:
+   Read rubric weights from ~/.claude/project-finisher-data/workflow_preferences.md
+   (section "Reviewer Rubric Weights"). If absent, reviewer uses defaults.
+
    Invoke the reviewer agent in comparative mode:
    - Branch A: pf/milestone-{N}/a
    - Branch B: pf/milestone-{N}/b
+   - Default branch: {default_branch_name}
    - Acceptance criteria: {acceptance_criteria_list}
+   - Rubric weights: {weights from workflow_preferences.md or "use defaults"}
 
 2. SELECT WINNER based on comparative review report:
    - Both PASS → pick higher score

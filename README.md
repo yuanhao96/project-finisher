@@ -218,6 +218,8 @@ pf/milestone-3
 
 The reviewer agent scores both branches, picks the winner based on criteria met, test coverage, code simplicity, and dependency count. The losing approach is archived for future reference. The squash commit message documents which approach won and why.
 
+The reviewer's scoring is **personalized** — rubric weights are derived from your observed workflow preferences (pacing, depth). A fast/shallow user's reviewer favors simpler, smaller implementations. A deliberate/deep user's reviewer favors thoroughness and clean architecture. This means the same goal file can produce different "best" implementations for different users, each optimized for their working style.
+
 This doubles API usage for that milestone but can produce better results for non-trivial architectural decisions.
 
 ### Conflict Handling

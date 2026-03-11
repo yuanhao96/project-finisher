@@ -133,8 +133,11 @@ When invoked with two branches to compare, perform the review process on **both*
    - Tests passing (count)
    - Lines changed vs default branch (`git diff --stat <default-branch>...HEAD | tail -1`)
    - New dependencies added (scan package.json, requirements.txt, go.mod, etc.)
+   - Code documentation quality (docstrings, comments on non-obvious logic: good/adequate/poor)
+   - Architectural cleanliness (separation of concerns, naming, modularity: good/adequate/poor)
    - Regressions found (count)
-4. **Produce the comparative review report** using the format below.
+4. **Apply rubric weights** if provided in the invocation prompt (from `workflow_preferences.md`). Compute a weighted score for each branch. If no rubric weights are provided, use the default scoring priority (see below).
+5. **Produce the comparative review report** using the format below.
 
 ### Comparative Review Report Format
 
@@ -181,24 +184,48 @@ When invoked with two branches to compare, perform the review process on **both*
 
 ### Comparison
 
-| Dimension | Branch A | Branch B |
-|-----------|----------|----------|
-| Criteria met | {n}/{total} | {n}/{total} |
-| Tests passing | {n} | {n} |
-| Lines changed | {n} | {n} |
-| New dependencies | {n} | {n} |
-| Regressions | {n} | {n} |
+| Dimension | Weight | Branch A | Branch B |
+|-----------|--------|----------|----------|
+| Criteria met | {w} | {n}/{total} | {n}/{total} |
+| Test coverage | {w} | {n} passing | {n} passing |
+| Lines changed | {w} | {n} | {n} |
+| New dependencies | {w} | {n} | {n} |
+| Code documentation | {w} | {good/adequate/poor} | {good/adequate/poor} |
+| Architectural cleanliness | {w} | {good/adequate/poor} | {good/adequate/poor} |
+| Regressions | N/A | {n} | {n} |
+
+**Weighted Score**: Branch A = {score}, Branch B = {score}
 
 ### Recommendation
 
 **Winner: Branch {A/B} ({approach_slug})**
 
-{One-paragraph rationale explaining why this branch is better. Reference specific
-criteria scores, code quality observations, and comparison metrics. If scores are
-tied, prefer the branch with fewer lines changed and fewer new dependencies.}
+{One-paragraph rationale explaining why this branch scored higher. Reference
+the weighted dimensions that drove the decision. Note if user preferences
+(e.g., "fast pacing favors simpler code") influenced the outcome.}
 ```
 
-### Scoring Priority (for selecting winner)
+### Weighted Scoring System
+
+Each dimension gets a **weight** (1-5) from the user's `workflow_preferences.md` rubric. If no rubric is provided, use these defaults:
+
+| Dimension | Default Weight |
+|-----------|---------------|
+| Criteria met | 5 (always) |
+| Test coverage | 3 |
+| Lines changed | 3 |
+| New dependencies | 2 |
+| Code documentation | 2 |
+| Architectural cleanliness | 3 |
+
+**Scoring per dimension**:
+- **Quantitative dimensions** (criteria met, tests, lines, dependencies): Normalize to 0-5 scale. The better branch gets 5, the worse gets a proportional score. If equal, both get 5.
+- **Qualitative dimensions** (documentation, architecture): good=5, adequate=3, poor=1.
+- **Regressions**: Not weighted — any regression is a strong negative signal. Subtract 10 points per regression from the branch's total.
+
+**Final score** = sum of (dimension_score × weight) for each dimension, minus regression penalties.
+
+### Default Scoring Priority (when no rubric provided)
 
 1. **Criteria met** — primary factor. More criteria PASS = better.
 2. **Test coverage** — secondary. More tests passing = better.

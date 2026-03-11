@@ -256,6 +256,7 @@ After brainstorming converges, if **all** of the following are true, activate ex
 When two branches were executed in parallel, use the comparative review flow instead of the normal review:
 
 1. **Dispatch the reviewer agent in comparative mode**:
+   - Read the "Reviewer Rubric Weights" section from `~/.claude/project-finisher-data/workflow_preferences.md`. If it exists, include the weights in the reviewer prompt. If it doesn't exist, the reviewer uses default weights.
    ```
    Agent tool call:
      subagent_type: "project-finisher:reviewer"
@@ -264,11 +265,20 @@ When two branches were executed in parallel, use the comparative review flow ins
 
        Branch A: pf/milestone-N/a ("{approach_a_slug}")
        Branch B: pf/milestone-N/b ("{approach_b_slug}")
+       Default branch: {default_branch_name}
        Acceptance criteria: {list from progress.md}
 
+       Rubric weights (from user preferences):
+       - Criteria met: 5
+       - Test coverage: {weight}
+       - Lines changed: {weight}
+       - New dependencies: {weight}
+       - Code documentation: {weight}
+       - Architectural cleanliness: {weight}
+
        Check out each branch in turn, run the full review process on each,
-       then produce a comparative review report. See the "Comparative Review"
-       section of your instructions.
+       compute weighted scores, then produce a comparative review report.
+       See the "Comparative Review" section of your instructions.
    ```
 2. **Select winner** based on the reviewer's comparative report:
    - Both PASS → pick the one with higher reviewer score.

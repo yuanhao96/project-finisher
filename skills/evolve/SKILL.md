@@ -129,6 +129,19 @@ _Total sessions observed: N_
 - **Confidence**: N
 - **Adaptation**: <what the orchestrator should do differently>
 
+## Reviewer Rubric Weights
+
+_Derived automatically from pacing, depth, and tool preferences. Used by the comparative reviewer when scoring exploratory branches._
+
+| Dimension | Weight | Derived From |
+|-----------|--------|-------------|
+| Criteria met | 5 | Always primary — not adjustable |
+| Test coverage | <N> | depth: deep → 4, shallow → 2, mixed → 3 |
+| Lines changed (fewer = better) | <N> | pacing: fast → 4, deliberate → 2, mixed → 3 |
+| New dependencies (fewer = better) | <N> | pacing: fast → 3, deliberate → 1, mixed → 2 |
+| Code documentation | <N> | depth: deep → 4, shallow → 1, mixed → 2 |
+| Architectural cleanliness | <N> | depth: deep → 4, shallow → 2, mixed → 3 |
+
 ## Session Log
 
 | Date | Pacing | Depth | Workflow | Notes |
@@ -174,6 +187,36 @@ When the orchestrator starts a new milestone, read `workflow_preferences.md` and
 | `prefer-agents` | Delegate research and exploration to Agent subagents. |
 | `prefer-edit` | Use Edit for file modifications. Avoid full Write unless creating new files. |
 | `prefer-write` | Use Write for file modifications when changes are extensive. |
+
+### Reviewer Rubric Weight Derivation
+
+When updating `workflow_preferences.md` (Step 3), also recompute the "Reviewer Rubric Weights" section. These weights are derived deterministically from pacing and depth preferences:
+
+| Dimension | fast | deliberate | mixed |
+|-----------|------|-----------|-------|
+| **Test coverage** | 2 | 4 | 3 |
+| **Lines changed** | 4 | 2 | 3 |
+| **New dependencies** | 3 | 1 | 2 |
+
+| Dimension | shallow | deep | mixed |
+|-----------|---------|------|-------|
+| **Test coverage** | 2 | 4 | 3 |
+| **Code documentation** | 1 | 4 | 2 |
+| **Architectural cleanliness** | 2 | 4 | 3 |
+
+**"Criteria met" is always weight 5** — it is the primary factor regardless of user style.
+
+When both pacing and depth contribute to a dimension (e.g., test coverage), use the **higher** of the two values.
+
+**Example**: A user with pacing=fast, depth=shallow would get:
+- Criteria met: 5 (fixed)
+- Test coverage: max(2, 2) = 2
+- Lines changed: 4 (from fast)
+- New dependencies: 3 (from fast)
+- Code documentation: 1 (from shallow)
+- Architectural cleanliness: 2 (from shallow)
+
+This user's reviewer would strongly favor simpler, smaller implementations. A deliberate+deep user would favor thoroughness and clean architecture.
 
 ---
 
