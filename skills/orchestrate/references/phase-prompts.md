@@ -127,20 +127,26 @@ PLAN STRUCTURE:
 1. FILES — List every file to create or modify:
    - File path: description of change
 
-2. TASKS — Ordered implementation steps:
+2. MILESTONE RUBRIC — For each dimension in Quality Priorities (from goal file):
+   - What does 1-3 look like for this milestone? (minimal, broken, missing)
+   - What does 7-10 look like? (thorough, complete, exemplary)
+   - Base on the planned files, tests, and scope.
+   - Include in plan artifact AND current_context.md under ## Milestone Rubric.
+
+3. TASKS — Ordered implementation steps:
    - Each task should be a single, verifiable unit of work.
    - Include the expected outcome for each task.
    - Note which files each task touches.
 
-3. TESTS — What to test and how:
+4. TESTS — What to test and how:
    - Unit tests: what functions/modules to test.
    - Integration tests: what workflows to verify.
    - Manual checks: what to inspect visually or via CLI.
 
-4. DEPENDENCY ORDER — Which tasks must complete before others:
+5. DEPENDENCY ORDER — Which tasks must complete before others:
    - Task N must complete before Task M because...
 
-5. ROLLBACK NOTES — For risky steps:
+6. ROLLBACK NOTES — For risky steps:
    - If step X fails, revert by...
 
 VALIDATION CHECKLIST:
@@ -243,31 +249,41 @@ REVIEW PROCEDURE:
    - Record: total tests, passed, failed, skipped.
    - If tests fail, note which tests and why.
 
-2. CHECK ACCEPTANCE CRITERIA:
+2. SCORE THE MILESTONE (Quality Scoring procedure):
+   a. Load the milestone rubric from current_context.md (generated during Plan phase).
+   b. Score each dimension (weight > 0) from 1-10 with cited evidence.
+      Use rubric descriptors to calibrate scores.
+   c. Compute weighted average: Σ(weight × score) / Σ(weight).
+   d. Write score card to current_context.md under ## Score Cards (append as Round N).
+   e. If weighted average ≥ threshold: proceed to step 3.
+   f. If weighted average < threshold: note the score and proceed.
+      (The inner review-fix loop, if implemented, handles iterative improvement.)
+
+3. CHECK ACCEPTANCE CRITERIA:
    For each criterion:
    - [ ] {criterion}: MET / NOT MET — {evidence or reason}
 
-3. CHECK FOR REGRESSIONS:
+4. CHECK FOR REGRESSIONS:
    - Verify that functionality from previous milestones still works.
    - If regressions found: document them as blockers.
 
-4. WRITE LESSONS (append to lessons.md):
+5. WRITE LESSONS (append to lessons.md):
    - What worked well in this milestone?
    - What didn't work or took longer than expected?
    - Patterns to reuse in future milestones.
    - Patterns to avoid.
 
-5. UPDATE PROGRESS (update progress.md):
+6. UPDATE PROGRESS (update progress.md):
    - If ALL criteria met:
-     - Move milestone to "Completed Milestones" with date and summary.
+     - Move milestone to "Completed Milestones" with date, summary, and final score.
      - Propose 1-3 new upcoming milestones.
      - Re-prioritize the milestone queue.
    - If criteria NOT met:
      - Decide: re-enter Execute (for small gaps) or re-enter Plan (for significant gaps).
      - Note what remains and why.
-     - SKIP steps 6-8 (doc-check, squash, archive) — only run on completion.
+     - SKIP steps 7-10 (doc-check, squash, changelog, archive) — only run on completion.
 
-6. DOC-CHECK AND UPDATE (only if ALL criteria met):
+7. DOC-CHECK AND UPDATE (only if ALL criteria met):
    - Run: git diff --name-only <default-branch>...HEAD
    - Check if any user-facing behavior changed (new commands, APIs, features, workflows).
    - If yes, update relevant docs:
@@ -277,7 +293,7 @@ REVIEW PROCEDURE:
      - SKILL.md files: if skill behavior changed
    - Commit: git commit -m "pf: docs — update for milestone {N}"
 
-7. SQUASH-MERGE TO DEFAULT BRANCH (only if ALL criteria met):
+8. SQUASH-MERGE TO DEFAULT BRANCH (only if ALL criteria met):
    - git checkout <default-branch>
    - git merge --squash pf/milestone-{N}
    - Create squash commit with a rich, structured message.
@@ -300,6 +316,9 @@ REVIEW PROCEDURE:
      - [x] {criterion 2}
      - ...
 
+     ## Final Score
+     {weighted_average} / 10
+
      ## Files Changed
      {output of: git diff --stat <default-branch>}
 
@@ -316,7 +335,7 @@ REVIEW PROCEDURE:
      git add -A
      git commit (with the rich message above)
 
-8. UPDATE CHANGELOG:
+9. UPDATE CHANGELOG:
    - If `CHANGELOG.md` exists at the project root, prepend the new milestone entry.
    - If it does not exist, create it.
    - Format:
@@ -342,11 +361,15 @@ REVIEW PROCEDURE:
 
    - Commit: git add CHANGELOG.md && git commit -m "pf: changelog — milestone {N}"
 
-9. ARCHIVE MILESTONE BRANCH:
+10. ARCHIVE MILESTONE BRANCH:
    - git branch -m pf/milestone-{N} archive/pf/milestone-{N}
    - The archived branch preserves full incremental commit history.
 
-10. DECIDE NEXT ACTION:
+11. EVOLVE WORKFLOW PREFERENCES:
+   - Run the evolve skill's "Observe & Extract" procedure.
+   - Update ~/.claude/project-finisher-data/workflow_preferences.md.
+
+12. DECIDE NEXT ACTION:
    - If the overall project goal is satisfied:
      - Generate a completion report.
      - STOP the loop.
