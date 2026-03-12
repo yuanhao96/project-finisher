@@ -242,6 +242,103 @@ See `references/milestone-examples.md` for concrete examples of well-scoped and 
 
 ---
 
+## Quality Scoring
+
+The quality scoring system evaluates milestones on multiple dimensions with numeric scores (1-10), providing richer feedback than binary pass/fail. Scores are weighted by user-defined priorities and compared against a threshold to determine milestone completion.
+
+### Quality Priorities Format
+
+The goal file may contain a `## Quality Priorities` section that defines dimension weights and threshold:
+
+```markdown
+## Quality Priorities
+
+| Dimension | Weight |
+|-----------|--------|
+| acceptance_criteria | 4 |
+| correctness | 3 |
+| test_coverage | 2 |
+| code_quality | 2 |
+| documentation | 1 |
+| performance | 0 |
+
+threshold: 7.0
+```
+
+Weights range from 0 (skip) to 4 (critical). If no Quality Priorities section exists, see the `/finish` command for initialization behavior.
+
+### Universal Dimensions
+
+| Dimension | Description | Required? |
+|-----------|-------------|-----------|
+| `acceptance_criteria` | Are the milestone's acceptance criteria met with evidence? | Yes (weight ≥ 3) |
+| `correctness` | Does the implementation work correctly? No regressions from prior milestones? | Yes (weight ≥ 1) |
+| `test_coverage` | Are there sufficient tests? Are error/edge cases covered? | Yes (weight ≥ 0) |
+| `code_quality` | Does the code follow existing patterns? Is it clean and maintainable? | Yes (weight ≥ 0) |
+| `documentation` | Are docs updated for user-facing changes? | Optional (weight 0 to skip) |
+| `performance` | Does the implementation meet performance requirements? | Optional (weight 0 to skip) |
+
+### Scoring Procedure
+
+When scoring a milestone (called from Phase 4: Review):
+
+1. Load the milestone rubric from `current_context.md` (generated during Phase 2: Plan).
+2. For each dimension with weight > 0, assign a score from 1-10:
+   - Use the rubric descriptors to calibrate: match current state against the 1-3 and 7-10 descriptions.
+   - **Cite specific evidence** for every score. No score without a citation. Examples:
+     - "test_coverage: 6 — 8 tests added covering happy path, missing error tests for timeout and auth failure (see `tests/test_auth.py`)"
+     - "correctness: 9 — all 14 tests pass, manual check of edge cases confirms no regressions (`git diff main...HEAD` shows no changes to prior milestone files)"
+3. Compute weighted average: `Σ(weight × score) / Σ(weight)`.
+4. Compare against threshold (default 7.0, configurable in Quality Priorities).
+
+### Score Card Format
+
+Score cards are written to `current_context.md` under `## Score Cards`:
+
+```markdown
+### Round N (YYYY-MM-DD)
+
+| Dimension | Weight | Score | Evidence | Delta |
+|-----------|--------|-------|----------|-------|
+| acceptance_criteria | 4 | 8 | 3/3 criteria verified ✓ | — |
+| correctness | 3 | 7 | All tests pass, no regressions | — |
+| test_coverage | 2 | 5 | Missing error path tests for X | — |
+| code_quality | 2 | 8 | Follows existing patterns | — |
+
+**Weighted average**: 6.8 / 10 (threshold: 7.0)
+```
+
+The Delta column shows change from previous round (`—` for Round 1, `+N` or `-N` for subsequent rounds). All rounds are kept for trajectory visibility.
+
+### Default Weights
+
+When no Quality Priorities section exists and auto mode must infer:
+
+| Dimension | Default Weight |
+|-----------|---------------|
+| acceptance_criteria | 4 |
+| correctness | 3 |
+| test_coverage | 2 |
+| code_quality | 2 |
+| documentation | 1 |
+| performance | 0 |
+
+### Auto-Inference Rules
+
+In auto mode, adjust defaults based on keywords found in the goal file:
+
+| Keywords in goal file | Adjustment |
+|-----------------------|------------|
+| "robust", "production", "reliable", "critical" | correctness → 4, test_coverage → 3 |
+| "prototype", "MVP", "proof of concept", "experiment" | test_coverage → 1, code_quality → 1 |
+| "documentation", "user-facing", "API" | documentation → 2 or 3 |
+| "performance", "latency", "throughput", "scale" | performance → 2 or 3 |
+| "refactor", "clean", "maintainable" | code_quality → 3 |
+
+Apply at most one adjustment per dimension. If multiple keywords match, use the highest weight.
+
+---
+
 ## Iteration Progression
 
 As the project advances through milestones, the nature of the work changes. Use this table to guide milestone selection:
