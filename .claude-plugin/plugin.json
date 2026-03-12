@@ -1,6 +1,6 @@
 {
   "name": "project-finisher",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Autonomous iterative project completion agent — drives projects from goal to done through brainstorm/plan/execute/review cycles with cross-session memory",
   "author": {
     "name": "Yuanhao Huang"

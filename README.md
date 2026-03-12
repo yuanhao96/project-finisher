@@ -35,7 +35,7 @@ flowchart TD
     EXECUTE --> REVIEW
 
     subgraph REVIEW ["Phase 4: Review"]
-        R1["Verify acceptance criteria Run test suite Check regressions Update lessons.md Doc-check + update docs Squash-merge to default branch Archive milestone branch"]
+        R1["Score each quality dimension (1-10) Verify acceptance criteria Run test suite Check regressions Update lessons.md Doc-check + update docs Squash-merge to default branch Archive milestone branch"]
     end
 
     REVIEW --> DONE{Goal reached?}
@@ -117,6 +117,27 @@ In auto mode:
 - The only exception is **external resources** (API keys, credentials) — the plugin still stops for those
 
 All autonomous decisions are logged with an `[AUTO]` prefix in `project_memory/current_context.md` so you can review them after the session.
+
+### Quality Scoring
+
+Milestones are evaluated on multiple weighted dimensions (1-10 per dimension) instead of just binary pass/fail. Add a `## Quality Priorities` section to your goal file to customize:
+
+```markdown
+## Quality Priorities
+
+| Dimension | Weight |
+|-----------|--------|
+| acceptance_criteria | 4 |
+| correctness | 3 |
+| test_coverage | 2 |
+| code_quality | 2 |
+| documentation | 1 |
+| performance | 0 |
+
+threshold: 7.0
+```
+
+Weights range from 0 (skip) to 4 (critical). If you don't include this section, the plugin will propose one during the first run (or infer defaults in auto mode). Each review produces a score card with per-dimension scores and cited evidence, and the final weighted average is stored for trajectory tracking across milestones.
 
 ### Continuous Mode
 
