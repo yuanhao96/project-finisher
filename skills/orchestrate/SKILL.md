@@ -104,12 +104,17 @@ Each milestone progresses through four phases in order. After the Review phase c
    - **Tasks** — Ordered list of discrete work items, each small enough to verify independently.
    - **Tests** — What to test and how (unit tests, integration tests, manual checks).
    - **Dependency order** — Which tasks must complete before others can start.
-2. Save the full plan to `docs/plans/YYYY-MM-DD-milestone-name.md` (create the `docs/plans/` directory if it does not exist). Use the current date and a slug of the milestone name.
-3. Update `current_context.md`:
+2. **Generate milestone rubric** — For each dimension in the project's Quality Priorities (from the goal file), write concrete descriptors for this specific milestone:
+   - What does 1-3 look like? (minimal, broken, or missing)
+   - What does 7-10 look like? (thorough, complete, or exemplary)
+   - Base descriptors on the planned files, tests, and scope — be specific to what this milestone is building.
+   - Include the rubric table in the plan artifact (`docs/plans/`) and in `current_context.md` under a `## Milestone Rubric` section. Use the format defined in the Quality Scoring section.
+3. Save the full plan to `docs/plans/YYYY-MM-DD-milestone-name.md` (create the `docs/plans/` directory if it does not exist). Use the current date and a slug of the milestone name.
+4. Update `current_context.md`:
    - Set the "Current Phase" to `plan`.
    - Copy the step list into the "Plan Reference > Steps" section as a checklist.
-4. Validate the plan: every step must be actionable without asking the user for clarification. If any step requires input, stop and ask.
-5. Advance to Phase 3 (Execute).
+5. Validate the plan: every step must be actionable without asking the user for clarification. If any step requires input, stop and ask.
+6. Advance to Phase 3 (Execute).
 
 **Rules**:
 - The plan must be self-contained. Another agent reading only `current_context.md` should be able to execute it.
