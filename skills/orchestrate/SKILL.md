@@ -350,6 +350,15 @@ In auto mode, adjust defaults based on keywords found in the goal file:
 
 Apply at most one adjustment per dimension. If multiple keywords match, use the highest weight.
 
+### Review-Fix Loop Constants
+
+| Constant | Default | Description |
+|----------|---------|-------------|
+| `MAX_REVIEW_ROUNDS` | 3 | Maximum scoring rounds per milestone review |
+| `STAGNATION_THRESHOLD` | 0.5 | Minimum weighted average improvement between rounds to continue |
+| `STRUCTURAL_FAILURE_THRESHOLD` | 4 | Any dimension scoring below this triggers re-plan instead of fix |
+| `MAX_FIXES_PER_ROUND` | 3 | Maximum fix targets per round (prevents thrashing) |
+
 ---
 
 ## Iteration Progression
