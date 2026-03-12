@@ -249,15 +249,49 @@ REVIEW PROCEDURE:
    - Record: total tests, passed, failed, skipped.
    - If tests fail, note which tests and why.
 
-2. SCORE THE MILESTONE (Quality Scoring procedure):
-   a. Load the milestone rubric from current_context.md (generated during Plan phase).
+2. SCORE AND IMPROVE THE MILESTONE (inner review-fix loop):
+
+   ROUND 1 — Score each dimension using Quality Scoring procedure:
+   a. Load milestone rubric from current_context.md.
    b. Score each dimension (weight > 0) from 1-10 with cited evidence.
-      Use rubric descriptors to calibrate scores.
    c. Compute weighted average: Σ(weight × score) / Σ(weight).
-   d. Write score card to current_context.md under ## Score Cards (append as Round N).
-   e. If weighted average ≥ threshold: proceed to step 3.
-   f. If weighted average < threshold: note the score and proceed.
-      (The inner review-fix loop, if implemented, handles iterative improvement.)
+   d. Write score card to current_context.md under ## Score Cards.
+
+   IF weighted average ≥ threshold → proceed to step 3.
+
+   IF weighted average < threshold → enter fix loop:
+
+   e. STRUCTURAL FAILURE CHECK: If ANY dimension < 4 → break out, re-enter Plan phase.
+      Log failing dimension and score in current_context.md.
+
+   f. IDENTIFY FIX TARGETS: Dimensions scoring < 7, prioritized by weight × (7 - score).
+      Cap at 3 fixes per round.
+
+   g. IMPLEMENT FIXES: Minimum changes to improve each target dimension.
+      Commit: pf: review-fix round N — {description}
+
+   h. RE-SCORE (Round N+1): Score all dimensions again with fresh evidence.
+      Write new score card with Delta column.
+
+   i. CHECK EXIT CONDITIONS:
+      - Weighted average ≥ threshold → PASS, proceed to step 3.
+      - Improvement < 0.5 from previous round → STAGNATION.
+        If score ≥ threshold - 1.0: accept with caveats, proceed to step 3.
+        Otherwise: re-enter Execute phase.
+      - Round count = 3 (MAX_REVIEW_ROUNDS) → MAX ROUNDS.
+        If score ≥ threshold - 1.0: accept with caveats, proceed to step 3.
+        Otherwise: re-enter Execute phase.
+
+   j. If no exit condition → repeat from (f).
+
+   AFTER LOOP PASSES (threshold met or accepted with caveats):
+   - Invoke reviewer agent for independent PASS/FAIL verdict.
+   - If reviewer PASS → proceed to step 3.
+   - If reviewer FAIL → one additional fix round targeting reviewer's concerns.
+     Re-invoke reviewer. If still FAIL, note discrepancy in lessons.md,
+     proceed with loop's score as final score.
+
+   Inner loop rounds are sub-iterations — do NOT count against continuous mode budgets.
 
 3. CHECK ACCEPTANCE CRITERIA:
    For each criterion:
