@@ -188,7 +188,7 @@ Each milestone progresses through four phases in order. After the Review phase c
    - Patterns to avoid.
 6. **Update progress.md**:
    - If all acceptance criteria are met: Move the milestone to "Completed Milestones" with a date, summary, and **final score** (weighted average from the last scoring round).
-   - If criteria are not met: Note what remains and decide whether to re-enter Execute or re-plan. Skip steps 7-9 (doc-check, squash, archive) — they only run on milestone completion.
+   - If criteria are not met: Note what remains and decide whether to re-enter Execute or re-plan. Skip steps 7-10 (doc-check, squash, changelog, archive) — they only run on milestone completion.
    - Propose 1-3 new upcoming milestones based on what was learned and what remains toward the goal.
    - Re-prioritize the upcoming milestone queue.
 7. **Doc-check and update** (only if acceptance criteria are all met):
