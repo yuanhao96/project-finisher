@@ -117,27 +117,48 @@ Execute these steps in order:
 
 1. **Read the goal file** completely. Parse and understand every requirement, constraint, and success criterion it contains.
 
-2. **Confirm with the user** before making any changes:
+2. **Check for Quality Priorities** in the goal file:
+   - **If `## Quality Priorities` section exists**: Parse the dimension weights and threshold. Validate that weights are 0-4 and required dimensions (`acceptance_criteria`, `correctness`) are present with weight ≥ 1. If validation fails, warn the user and suggest corrections.
+   - **If missing, normal mode**: Analyze the goal file content and propose a rubric based on the goal's language and priorities:
+     > Your goal file doesn't include quality scoring priorities. Based on your goal, I'd suggest:
+     >
+     > | Dimension | Weight | Rationale |
+     > |-----------|--------|-----------|
+     > | acceptance_criteria | 4 | Always critical |
+     > | correctness | 3 | ... |
+     > | test_coverage | 2 | ... |
+     > | code_quality | 2 | ... |
+     > | documentation | 1 | ... |
+     > | performance | 0 | ... |
+     >
+     > Threshold: 7.0
+     >
+     > Want to adjust these, or should I go with this?
+
+     Wait for user confirmation. Write the accepted rubric to the goal file as a `## Quality Priorities` section (before `## Notes` if it exists, otherwise at the end).
+   - **If missing, auto mode**: Infer weights using the auto-inference rules from the orchestrate skill's Quality Scoring section (scan goal file for keywords like "robust", "prototype", "performance", etc. and adjust defaults accordingly). Write the inferred rubric to the goal file. Log the inference as `[AUTO]` in `current_context.md`.
+
+3. **Confirm with the user** before making any changes:
    > I'll be working on **[project path]** toward the goal described in **[goal path]**. Ready to begin?
 
    - **Normal mode**: Wait for explicit user confirmation before continuing.
    - **Auto mode**: Log the message for the record but proceed immediately without waiting.
 
-3. **Create the `project_memory/` directory** at the project root with these initialized files:
+4. **Create the `project_memory/` directory** at the project root with these initialized files:
    - `progress.md` — populated with the goal summary extracted from the goal file, an empty "Completed Milestones" section, and empty "Current Milestone" and "Upcoming Milestones" sections.
    - `current_context.md` — initialized with the template structure (empty sections ready for the first milestone).
    - `lessons.md` — initialized with the template header only.
 
    Use the memory skill to set up these files with the correct formats defined in `skills/memory/references/file-formats.md`.
 
-4. **Analyze the project's current state**: Read the project's existing files, structure, and any existing code to understand the starting point.
+5. **Analyze the project's current state**: Read the project's existing files, structure, and any existing code to understand the starting point.
 
-5. **Propose initial milestones** (3-5) based on:
+6. **Propose initial milestones** (3-5) based on:
    - The goal file requirements
    - The current project state
    - The milestone scoping rules from the orchestrate skill (session-completable, 2-5 acceptance criteria, fewer than 15 files, independent value, clear boundary)
 
-6. **Present the milestones to the user** for approval. For each milestone, show:
+7. **Present the milestones to the user** for approval. For each milestone, show:
    - Name
    - Rough scope (one sentence)
    - Acceptance criteria (2-5 items)
@@ -146,9 +167,9 @@ Execute these steps in order:
    - **Normal mode**: Ask the user to approve, modify, or reorder the milestones.
    - **Auto mode**: Display the milestones for the record, then approve them automatically and proceed.
 
-7. **If `--continuous` is active**, create `.claude/pf-loop.state.json` with the default budgets (see "Continuous Mode" above). Create the `.claude/` directory if needed.
+8. **If `--continuous` is active**, create `.claude/pf-loop.state.json` with the default budgets (see "Continuous Mode" above). Create the `.claude/` directory if needed.
 
-8. **Once approved**, write the milestones to `progress.md` (first as current, rest as upcoming) and begin the orchestration loop by invoking the orchestrate skill. Pass the `--auto` flag through to the orchestrate skill if auto mode is active.
+9. **Once approved**, write the milestones to `progress.md` (first as current, rest as upcoming) and begin the orchestration loop by invoking the orchestrate skill. Pass the `--auto` flag through to the orchestrate skill if auto mode is active.
 
 ---
 
