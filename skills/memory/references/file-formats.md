@@ -22,6 +22,7 @@ This document contains the exact templates for all three memory files in `projec
 - **Acceptance criteria met**:
   - [x] <criterion 1>
   - [x] <criterion 2>
+- **Final score**: X.X / 10
 
 <!-- Repeat for each completed milestone. Newest at the bottom. -->
 
@@ -84,9 +85,29 @@ This document contains the exact templates for all three memory files in `projec
 2. [ ] <step description>
 3. [ ] <step description>
 
+## Milestone Rubric
+
+<!-- Generated during Plan phase. Describes what 1-3 and 7-10 mean for each dimension in this milestone. -->
+
+| Dimension | Weight | 1-3 | 7-10 |
+|-----------|--------|-----|------|
+| <dimension> | N | <description> | <description> |
+
 ## Notes
 
 <!-- Freeform notes, observations, or context that doesn't fit above. -->
+
+## Score Cards
+
+<!-- Score cards from the review phase. One subsection per scoring round. Keep all rounds for trajectory visibility. -->
+
+### Round N (YYYY-MM-DD)
+
+| Dimension | Weight | Score | Evidence | Delta |
+|-----------|--------|-------|----------|-------|
+| <dimension> | N | N | <cited evidence> | — |
+
+**Weighted average**: X.X / 10 (threshold: X.X)
 ```
 
 ---
