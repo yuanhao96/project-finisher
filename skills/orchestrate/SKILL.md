@@ -172,19 +172,26 @@ Each milestone progresses through four phases in order. After the Review phase c
 **Procedure**:
 
 1. **Run tests**: Execute the project's test suite (or the tests defined in the plan). Record pass/fail results.
-2. **Check acceptance criteria**: For each criterion in the current milestone's acceptance criteria (from `progress.md`), verify whether it is met. Check the box if met; note why if not.
-3. **Check for regressions**: Verify that work from previous milestones still functions correctly.
-4. **Update lessons.md**: Append a new section for this milestone with:
+2. **Score the milestone** using the Quality Scoring procedure:
+   a. Load the milestone rubric from `current_context.md` (generated during Phase 2: Plan).
+   b. Score each dimension (weight > 0) from 1-10 with cited evidence. Use the rubric descriptors to calibrate.
+   c. Compute the weighted average.
+   d. Write the score card to `current_context.md` under `## Score Cards` (append as Round 1).
+   e. If weighted average ≥ threshold: proceed to step 3.
+   f. If weighted average < threshold: note the score and proceed — the inner review-fix loop (if implemented) will handle iterative improvement. Otherwise, the acceptance criteria check in step 3 remains the primary gate.
+3. **Check acceptance criteria**: For each criterion in the current milestone's acceptance criteria (from `progress.md`), verify whether it is met. Check the box if met; note why if not.
+4. **Check for regressions**: Verify that work from previous milestones still functions correctly.
+5. **Update lessons.md**: Append a new section for this milestone with:
    - What worked well.
    - What did not work or took longer than expected.
    - Patterns to reuse in future milestones.
    - Patterns to avoid.
-5. **Update progress.md**:
-   - If all acceptance criteria are met: Move the milestone to "Completed Milestones" with a date and summary.
-   - If criteria are not met: Note what remains and decide whether to re-enter Execute or re-plan. Skip steps 6-8 (doc-check, squash, archive) — they only run on milestone completion.
+6. **Update progress.md**:
+   - If all acceptance criteria are met: Move the milestone to "Completed Milestones" with a date, summary, and **final score** (weighted average from the last scoring round).
+   - If criteria are not met: Note what remains and decide whether to re-enter Execute or re-plan. Skip steps 7-9 (doc-check, squash, archive) — they only run on milestone completion.
    - Propose 1-3 new upcoming milestones based on what was learned and what remains toward the goal.
    - Re-prioritize the upcoming milestone queue.
-6. **Doc-check and update** (only if acceptance criteria are all met):
+7. **Doc-check and update** (only if acceptance criteria are all met):
    - Scan which files were modified during this milestone (`git diff --name-only <default-branch>...HEAD`).
    - Determine if any user-facing behavior changed (new commands, changed APIs, new features, modified workflows).
    - If yes, update the relevant documentation:
@@ -195,25 +202,26 @@ Each milestone progresses through four phases in order. After the Review phase c
      | **plugin.json** | Version bump if milestone adds features |
      | **SKILL.md files** | Skill behavior changed |
    - Commit doc updates on the milestone branch: `pf: docs — update for milestone N`.
-7. **Squash-merge to default branch** (only if acceptance criteria are all met):
+8. **Squash-merge to default branch** (only if acceptance criteria are all met):
    - Switch to the default branch: `git checkout <default-branch>`.
    - Squash-merge the milestone branch: `git merge --squash pf/milestone-N`.
    - Create a single commit with a structured message containing (see `references/phase-prompts.md` for exact format):
      - **Objective**: One-sentence milestone objective
      - **Key Decisions**: ALL decisions from `current_context.md`, verbatim, preserving `[AUTO]` tags
      - **Acceptance Criteria**: Checkboxes showing all criteria passed
+     - **Final Score**: Weighted average from the last scoring round
      - **Files Changed**: Output of `git diff --stat`
      - **Lessons**: One-line summary from `lessons.md`
    - Rewrite `project_memory/` files on the default branch to reflect the current state (overwrite, not merge — these are state files, history is in git).
    - Stage and commit everything together.
-8. **Update CHANGELOG.md**:
+9. **Update CHANGELOG.md**:
    - If `CHANGELOG.md` exists at the project root, prepend the new milestone entry.
    - If it does not exist, create it.
    - Each entry includes: milestone name, date, objective, key changes (from plan steps), and key decisions.
    - Commit: `pf: changelog — milestone N`.
-9. **Archive milestone branch**: Rename the milestone branch: `git branch -m pf/milestone-N archive/pf/milestone-N`. Archived branches preserve the full incremental commit history.
-10. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, tool usage patterns, edit size patterns, error recovery behavior, and interaction patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
-11. **Decide next action**:
+10. **Archive milestone branch**: Rename the milestone branch: `git branch -m pf/milestone-N archive/pf/milestone-N`. Archived branches preserve the full incremental commit history.
+11. **Evolve workflow preferences**: Run the evolve skill's "Observe & Extract" procedure. Reflect on this session's pacing, depth, workflow ordering, tool usage patterns, edit size patterns, error recovery behavior, and interaction patterns. Update `~/.claude/project-finisher-data/workflow_preferences.md` with any new observations. This step ensures the orchestrator continuously adapts to the user's working style.
+12. **Decide next action**:
     - **If more milestones remain in the queue**: Set the next highest-priority milestone as current, reset `current_context.md`, and enter Phase 1 (Brainstorm) for the new milestone.
     - **If no milestones remain — check goal satisfaction**: Re-read the goal file (the original, immutable goal). For each requirement in the goal file, check whether it has been demonstrably satisfied by the completed milestones. Only consider a requirement satisfied if there is concrete evidence (implemented code, passing tests, working feature).
       - **Goal genuinely satisfied** (all requirements met): Generate a completion report summarizing all milestones, total work done, and final state. Output `<pf-signal>GOAL_COMPLETE</pf-signal>`. Stop the loop.
