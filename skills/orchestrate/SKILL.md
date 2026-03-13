@@ -172,39 +172,34 @@ Each milestone progresses through four phases in order. After the Review phase c
 **Procedure**:
 
 1. **Run tests**: Execute the project's test suite (or the tests defined in the plan). Record pass/fail results.
-2. **Score and improve the milestone** (inner review-fix loop):
+2. **Score and improve the milestone** (inner review-fix loop with external scorer):
 
-   **Round 1** — Score each dimension using the Quality Scoring procedure:
-   a. Load the milestone rubric from `current_context.md` (generated during Phase 2: Plan).
-   b. Score each dimension (weight > 0) from 1-10 with cited evidence. Use the rubric descriptors to calibrate.
-   c. Compute the weighted average.
-   d. Write the score card to `current_context.md` under `## Score Cards` (append as Round 1).
+   **Round 1** — Score each dimension using the external Codex reviewer:
+   a. Run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh <project-dir> --round 1`.
+   b. Read `project_memory/review.json`. If it contains an `"error"` key, fall back to self-scoring using the Quality Scoring procedure (load rubric, score each dimension, compute weighted average).
+   c. Convert the JSON scores into a score card and write to `current_context.md` under `## Score Cards` (append as Round 1).
 
    **If weighted average ≥ threshold**: proceed to step 3 (acceptance criteria check).
 
    **If weighted average < threshold**, enter the fix loop:
 
-   e. **Structural failure check**: If ANY dimension scores below `STRUCTURAL_FAILURE_THRESHOLD` (4), the problem is fundamental. Break out of the review phase and re-enter Phase 2 (Plan) to re-plan the milestone. Log the failing dimension and score in `current_context.md`.
+   d. **Structural failure check**: If ANY dimension scores below `STRUCTURAL_FAILURE_THRESHOLD` (4), the problem is fundamental. Break out of the review phase and re-enter Phase 2 (Plan) to re-plan the milestone. Log the failing dimension and score in `current_context.md`.
 
-   f. **Identify fix targets**: Select dimensions scoring below 7, prioritized by `weight × (7 - score)` descending. Cap at `MAX_FIXES_PER_ROUND` (3) fixes per round.
+   e. **Identify fix targets**: Select dimensions scoring below 7, prioritized by `weight × (7 - score)` descending. Cap at `MAX_FIXES_PER_ROUND` (3) fixes per round.
 
-   g. **Implement targeted fixes**: For each fix target, make the minimum change needed to improve that dimension. Commit each fix with `pf: review-fix round N — <description>`.
+   f. **Implement targeted fixes**: For each fix target, make the minimum change needed to improve that dimension. Commit each fix with `pf: review-fix round N — <description>`.
 
-   h. **Re-score** (Round N+1): Score all dimensions again with fresh evidence. Write a new score card with the Delta column showing change from previous round.
+   g. **Re-score** (Round N+1): Run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh <project-dir> --round N+1`. If Codex fails, fall back to self-scoring. Write a new score card with the Delta column showing change from previous round.
 
-   i. **Check exit conditions**:
+   h. **Check exit conditions**:
       - Weighted average ≥ threshold → **PASS**. Proceed to step 3.
       - Improvement from previous round < `STAGNATION_THRESHOLD` (0.5) → **stagnation detected**. Log "score plateau at X.X" in `lessons.md`. If score ≥ threshold - 1.0, accept with caveats and proceed to step 3. Otherwise, re-enter Phase 3 (Execute) to address larger gaps.
       - Round count = `MAX_REVIEW_ROUNDS` (3) → **max rounds reached**. If score ≥ threshold - 1.0, accept with caveats and proceed to step 3. Otherwise, note gaps and re-enter Phase 3 (Execute).
 
-   j. If no exit condition triggered, repeat from (f) for the next round.
-
-   **After the loop passes** (threshold met or accepted with caveats):
-   - Invoke the **reviewer agent** for an independent PASS/FAIL verdict.
-   - If reviewer says PASS: proceed to step 3.
-   - If reviewer says FAIL despite loop passing: allow **one additional fix round** targeting the reviewer's specific concerns. Re-invoke reviewer. If still FAIL, note the discrepancy in `lessons.md` and proceed with the loop's score as the final score.
+   i. If no exit condition triggered, repeat from (e) for the next round.
 
    **Important**: Inner loop rounds are sub-iterations within a single review phase entry. They do NOT count against continuous mode phase iteration budgets.
+   **Fallback**: If Codex scoring fails on every attempt in a round, the orchestrator falls back to self-scoring for that round using the Quality Scoring procedure. This ensures the loop never stalls due to an external tool failure.
 
 3. **Check acceptance criteria**: For each criterion in the current milestone's acceptance criteria (from `progress.md`), verify whether it is met. Check the box if met; note why if not.
 4. **Check for regressions**: Verify that work from previous milestones still functions correctly.

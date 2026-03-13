@@ -249,31 +249,31 @@ REVIEW PROCEDURE:
    - Record: total tests, passed, failed, skipped.
    - If tests fail, note which tests and why.
 
-2. SCORE AND IMPROVE THE MILESTONE (inner review-fix loop):
+2. SCORE AND IMPROVE THE MILESTONE (inner review-fix loop with external scorer):
 
-   ROUND 1 — Score each dimension using Quality Scoring procedure:
-   a. Load milestone rubric from current_context.md.
-   b. Score each dimension (weight > 0) from 1-10 with cited evidence.
-   c. Compute weighted average: Σ(weight × score) / Σ(weight).
-   d. Write score card to current_context.md under ## Score Cards.
+   ROUND 1 — Score using Codex external reviewer:
+   a. Run: bash ${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh <project-dir> --round 1
+   b. Read project_memory/review.json.
+      If it contains "error" key → fall back to self-scoring (Quality Scoring procedure).
+   c. Convert JSON scores into score card, write to current_context.md under ## Score Cards.
 
    IF weighted average ≥ threshold → proceed to step 3.
 
    IF weighted average < threshold → enter fix loop:
 
-   e. STRUCTURAL FAILURE CHECK: If ANY dimension < 4 → break out, re-enter Plan phase.
+   d. STRUCTURAL FAILURE CHECK: If ANY dimension < 4 → break out, re-enter Plan phase.
       Log failing dimension and score in current_context.md.
 
-   f. IDENTIFY FIX TARGETS: Dimensions scoring < 7, prioritized by weight × (7 - score).
+   e. IDENTIFY FIX TARGETS: Dimensions scoring < 7, prioritized by weight × (7 - score).
       Cap at 3 fixes per round.
 
-   g. IMPLEMENT FIXES: Minimum changes to improve each target dimension.
+   f. IMPLEMENT FIXES: Minimum changes to improve each target dimension.
       Commit: pf: review-fix round N — {description}
 
-   h. RE-SCORE (Round N+1): Score all dimensions again with fresh evidence.
+   g. RE-SCORE (Round N+1): Run bash ${CLAUDE_PLUGIN_ROOT}/scripts/codex-review.sh <project-dir> --round N+1. If Codex fails, self-score.
       Write new score card with Delta column.
 
-   i. CHECK EXIT CONDITIONS:
+   h. CHECK EXIT CONDITIONS:
       - Weighted average ≥ threshold → PASS, proceed to step 3.
       - Improvement < 0.5 from previous round → STAGNATION.
         If score ≥ threshold - 1.0: accept with caveats, proceed to step 3.
@@ -282,15 +282,9 @@ REVIEW PROCEDURE:
         If score ≥ threshold - 1.0: accept with caveats, proceed to step 3.
         Otherwise: re-enter Execute phase.
 
-   j. If no exit condition → repeat from (f).
+   i. If no exit condition → repeat from (e).
 
-   AFTER LOOP PASSES (threshold met or accepted with caveats):
-   - Invoke reviewer agent for independent PASS/FAIL verdict.
-   - If reviewer PASS → proceed to step 3.
-   - If reviewer FAIL → one additional fix round targeting reviewer's concerns.
-     Re-invoke reviewer. If still FAIL, note discrepancy in lessons.md,
-     proceed with loop's score as final score.
-
+   FALLBACK: If Codex fails every attempt in a round, self-score that round.
    Inner loop rounds are sub-iterations — do NOT count against continuous mode budgets.
 
 3. CHECK ACCEPTANCE CRITERIA:
